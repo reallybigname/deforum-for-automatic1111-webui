@@ -1,60 +1,45 @@
-# %%
-# !! {"metadata":{
-# !!   "id": "c442uQJ_gUgy"
-# !! }}
-"""
-# **Deforum Stable Diffusion v0.3**
-[Stable Diffusion](https://github.com/CompVis/stable-diffusion) by Robin Rombach, Andreas Blattmann, Dominik Lorenz, Patrick Esser, Björn Ommer and the [Stability.ai](https://stability.ai/) Team. [K Diffusion](https://github.com/crowsonkb/k-diffusion) by [Katherine Crowson](https://twitter.com/RiversHaveWings). You need to get the ckpt file and put it on your Google Drive first to use this. It can be downloaded from [HuggingFace](https://huggingface.co/CompVis/stable-diffusion).
-
-Notebook by [deforum](https://discord.gg/upmXXsrwZc)
-"""
-
-# %%
-# !! {"metadata":{
-# !!   "id": "T4knibRpAQ06"
-# !! }}
-"""
-# Setup
-"""
-
-# %%
-# !! {"metadata":{
-# !!   "id": "2g-f7cQmf2Nt",
-# !!   "cellView": "form"
-# !! }}
 #@markdown **NVIDIA GPU**
 import subprocess
+import argparse
+import time
+from kabachuha_rotator import warpMatrix
 sub_p_res = subprocess.run(['nvidia-smi', '--query-gpu=name,memory.total,memory.free', '--format=csv,noheader'], stdout=subprocess.PIPE).stdout.decode('utf-8')
 print(sub_p_res)
 
-# %%
-# !! {"metadata":{
-# !!   "cellView": "form",
-# !!   "id": "TxIOPT0G5Lx1"
-# !! }}
-#@markdown **Model and Output Paths**
-# ask for the link
-print("Local Path Variables:\n")
+Aparser = argparse.ArgumentParser()
 
-models_path = "/content/models" #@param {type:"string"}
-output_path = "/content/output" #@param {type:"string"}
+Aparser.add_argument("--init-prompts", default=None, type=str, nargs="?", help="path to the input image")
+Aparser.add_argument("--flash", action="store_true")
+Aparser.add_argument("--turbo", action="store_true")
+Aparser.add_argument("--seed", default=-1, type=int)
+Aparser.add_argument("--steps", default=80, type=int)
+Aparser.add_argument("--experimental-rotate", action="store_true")
+new_opt = Aparser.parse_args()
+
+tic = time.time()
+
+batch_size = 1 #kabachuha HACK
 
 #@markdown **Google Drive Path Variables (Optional)**
 mount_google_drive = True #@param {type:"boolean"}
 force_remount = False
 
-if mount_google_drive:
-    from google.colab import drive # type: ignore
-    try:
-        drive_path = "/content/drive"
-        drive.mount(drive_path,force_remount=force_remount)
-        models_path_gdrive = "/content/drive/MyDrive/AI/models" #@param {type:"string"}
-        output_path_gdrive = "/content/drive/MyDrive/AI/StableDiffusion" #@param {type:"string"}
-        models_path = models_path_gdrive
-        output_path = output_path_gdrive
-    except:
-        print("...error mounting drive or with drive path variables")
-        print("...reverting to default path variables")
+#if mount_google_drive:
+#    from google.colab import drive # type: ignore
+#    try:
+#        drive_path = "/content/drive"
+#        drive.mount(drive_path,force_remount=force_remount)
+models_path_gdrive = "./content/drive/MyDrive/AI/models" #@param {type:"string"}
+output_path_gdrive = "./content/drive/MyDrive/AI/StableDiffusion" #@param {type:"string"}
+models_path = models_path_gdrive
+output_path = output_path_gdrive
+output_path = output_path_gdrive
+
+if new_opt.flash:
+    output_path = "/media/bepop-ml/SamDisk/content/drive/MyDrive/AI/StableDiffusion"
+#    except:
+#        print("...error mounting drive or with drive path variables")
+#        print("...reverting to default path variables")
 
 import os
 os.makedirs(models_path, exist_ok=True)
@@ -63,48 +48,9 @@ os.makedirs(output_path, exist_ok=True)
 print(f"models_path: {models_path}")
 print(f"output_path: {output_path}")
 
-# %%
-# !! {"metadata":{
-# !!   "id": "VRNl2mfepEIe",
-# !!   "cellView": "form"
-# !! }}
-#@markdown **Setup Environment**
 
-setup_environment = True #@param {type:"boolean"}
-print_subprocess = False #@param {type:"boolean"}
+# DEFINITIONS
 
-if setup_environment:
-    import subprocess, time
-    print("Setting up environment...")
-    start_time = time.time()
-    all_process = [
-        ['pip', 'install', 'torch==1.12.1+cu113', 'torchvision==0.13.1+cu113', '--extra-index-url', 'https://download.pytorch.org/whl/cu113'],
-        ['pip', 'install', 'omegaconf==2.2.3', 'einops==0.4.1', 'pytorch-lightning==1.7.4', 'torchmetrics==0.9.3', 'torchtext==0.13.1', 'transformers==4.21.2', 'kornia==0.6.7'],
-        ['git', 'clone', 'https://github.com/deforum/stable-diffusion'],
-        ['pip', 'install', '-e', 'git+https://github.com/CompVis/taming-transformers.git@master#egg=taming-transformers'],
-        ['pip', 'install', '-e', 'git+https://github.com/openai/CLIP.git@main#egg=clip'],
-        ['pip', 'install', 'accelerate', 'ftfy', 'jsonmerge', 'matplotlib', 'resize-right', 'timm', 'torchdiffeq'],
-        ['git', 'clone', 'https://github.com/shariqfarooq123/AdaBins.git'],
-        ['git', 'clone', 'https://github.com/isl-org/MiDaS.git'],
-        ['git', 'clone', 'https://github.com/MSFTserver/pytorch3d-lite.git'],
-    ]
-    for process in all_process:
-        running = subprocess.run(process,stdout=subprocess.PIPE).stdout.decode('utf-8')
-        if print_subprocess:
-            print(running)
-    
-    print(subprocess.run(['git', 'clone', 'https://github.com/deforum/k-diffusion/'], stdout=subprocess.PIPE).stdout.decode('utf-8'))
-    with open('k-diffusion/k_diffusion/__init__.py', 'w') as f:
-        f.write('')
-
-    end_time = time.time()
-    print(f"Environment set up in {end_time-start_time:.0f} seconds")
-
-# %%
-# !! {"metadata":{
-# !!   "id": "81qmVZbrm4uu",
-# !!   "cellView": "form"
-# !! }}
 #@markdown **Python Definitions**
 import json
 from IPython import display
@@ -169,7 +115,14 @@ def anim_frame_warp_2d(prev_img_cv2, args, anim_args, keys, frame_idx):
     rot_mat = cv2.getRotationMatrix2D(center, angle, zoom)
     trans_mat = np.vstack([trans_mat, [0,0,1]])
     rot_mat = np.vstack([rot_mat, [0,0,1]])
-    xform = np.matmul(rot_mat, trans_mat)
+    if new_opt.experimental_rotate:
+        M,sl = warpMatrix(args.W,args.H, 0,3,0, 1.,53);
+        post_trans_mat = np.float32([[1, 0, (args.W-sl)/2], [0, 1, (args.H-sl)/2]])
+        post_trans_mat = np.vstack([post_trans_mat, [0,0,1]])
+        bM = np.matmul(M, post_trans_mat)
+        xform = np.matmul(bM, rot_mat, trans_mat)
+    else:
+        xform = np.matmul(rot_mat, trans_mat)
 
     return cv2.warpPerspective(
         prev_img_cv2,
@@ -253,7 +206,7 @@ def load_img(path, shape):
         image = Image.open(path).convert('RGB')
 
     image = image.resize(shape, resample=Image.LANCZOS)
-    image = np.array(image).astype(np.float16) / 255.0
+    image = np.array(image).astype(np.float32) / 255.0
     image = image[None].transpose(0, 3, 1, 2)
     image = torch.from_numpy(image)
     return 2.*image - 1.
@@ -284,10 +237,10 @@ def maintain_colors(prev_img, color_match_sample, mode):
         matched_lab = match_histograms(prev_img_lab, color_match_lab, multichannel=True)
         return cv2.cvtColor(matched_lab, cv2.COLOR_LAB2RGB)
 
-
 def make_callback(sampler_name, dynamic_threshold=None, static_threshold=None, mask=None, init_latent=None, sigmas=None, sampler=None, masked_noise_modifier=1.0):  
     # Creates the callback function to be passed into the samplers
     # The callback function is applied to the image at each step
+    device = "cuda"
     def dynamic_thresholding_(img, threshold):
         # Dynamic thresholding from Imagen paper (May 2022)
         s = np.percentile(np.abs(img.cpu()), threshold, axis=tuple(range(1,img.ndim)))
@@ -372,7 +325,7 @@ def prepare_mask(mask_file, mask_shape, mask_brightness_adjust=1.0, mask_contras
 
 def sample_from_cv2(sample: np.ndarray) -> torch.Tensor:
     sample = ((sample.astype(float) / 255.0) * 2) - 1
-    sample = sample[None].transpose(0, 3, 1, 2).astype(np.float16)
+    sample = sample[None].transpose(0, 3, 1, 2).astype(np.float32)
     sample = torch.from_numpy(sample)
     return sample
 
@@ -499,29 +452,40 @@ def transform_image_3d(prev_img_cv2, adabins_helper, midas_model, midas_transfor
     return result
 
 def generate(args, return_latent=False, return_sample=False, return_c=False):
+    device = "cuda"
     seed_everything(args.seed)
     os.makedirs(args.outdir, exist_ok=True)
 
-    if args.sampler == 'plms':
-        sampler = PLMSSampler(model)
-    else:
-        sampler = DDIMSampler(model)
+#    if args.sampler == 'plms':
+#        sampler = PLMSSampler(model)
+#    else:
+#        sampler = DDIMSampler(model)
 
-    model_wrap = CompVisDenoiser(model)       
+    model_wrap = CompVisDenoiser(sampler)       
     batch_size = args.n_samples
     prompt = args.prompt
     assert prompt is not None
     data = [batch_size * [prompt]]
+    
+    modelFS.to(device)
 
     init_latent = None
     if args.init_latent is not None:
         init_latent = args.init_latent
     elif args.init_sample is not None:
-        init_latent = model.get_first_stage_encoding(model.encode_first_stage(args.init_sample))
+        init_latent = modelFS.get_first_stage_encoding(modelFS.encode_first_stage(args.init_sample))
+        mem = torch.cuda.memory_allocated() / 1e6
+        modelFS.to("cpu")
+        while torch.cuda.memory_allocated() / 1e6 >= mem:
+            time.sleep(1)
     elif args.use_init and args.init_image != None and args.init_image != '':
         init_image = load_img(args.init_image, shape=(args.W, args.H)).to(device)
         init_image = repeat(init_image, '1 ... -> b ...', b=batch_size)
-        init_latent = model.get_first_stage_encoding(model.encode_first_stage(init_image))  # move to latent space        
+        init_latent = modelFS.get_first_stage_encoding(modelFS.encode_first_stage(init_image))  # move to latent space
+        mem = torch.cuda.memory_allocated() / 1e6
+        modelFS.to("cpu")
+        while torch.cuda.memory_allocated() / 1e6 >= mem:
+            time.sleep(1)     
 
     if not args.use_init and args.strength > 0:
         print("\nNo init image, but strength > 0. This may give you some strange results.\n")
@@ -543,12 +507,14 @@ def generate(args, return_latent=False, return_sample=False, return_c=False):
         
     t_enc = int((1.0-args.strength) * args.steps)
 
+    #model.to(device)
+
     # Noise schedule for the k-diffusion samplers (used for masking)
     k_sigmas = model_wrap.get_sigmas(args.steps)
     k_sigmas = k_sigmas[len(k_sigmas)-t_enc-1:]
 
-    if args.sampler in ['plms','ddim']:
-        sampler.make_schedule(ddim_num_steps=args.steps, ddim_eta=args.ddim_eta, ddim_discretize='fill', verbose=False)
+#    if args.sampler in ['plms','ddim']:
+#        sampler.make_schedule(ddim_num_steps=args.steps, ddim_eta=args.ddim_eta, ddim_discretize='fill', verbose=False)
 
     callback = make_callback(sampler_name=args.sampler,
                             dynamic_threshold=args.dynamic_threshold, 
@@ -559,82 +525,100 @@ def generate(args, return_latent=False, return_sample=False, return_c=False):
                             sampler=sampler)    
 
     results = []
-    precision_scope = autocast if args.precision == "autocast" else nullcontext
+    #precision_scope = autocast if args.precision == "autocast" else nullcontext
+    precision_scope = nullcontext
     with torch.no_grad():
-        with precision_scope("cuda"):
-            with model.ema_scope():
-                for prompts in data:
-                    uc = None
-                    if args.scale != 1.0:
-                        uc = model.get_learned_conditioning(batch_size * [""])
-                    if isinstance(prompts, tuple):
-                        prompts = list(prompts)
-                    c = model.get_learned_conditioning(prompts)
+        with precision_scope(device):
+            for prompts in data:
+                modelCS.to(device)
+                uc = None
+                if args.scale != 1.0:
+                    uc = modelCS.get_learned_conditioning(batch_size * [""])
+                if isinstance(prompts, tuple):
+                    prompts = list(prompts)
+                c = modelCS.get_learned_conditioning(prompts)
+                if args.init_c != None:
+                    c = args.init_c
+                    
 
-                    if args.init_c != None:
-                        c = args.init_c
+                # kabachuha Unload model to CPU!!!!!
+                if device != "cpu":
+                    mem = torch.cuda.memory_allocated() / 1e6
+                    modelCS.to("cpu")
+                    while torch.cuda.memory_allocated() / 1e6 >= mem:
+                        time.sleep(1)
 
-                    if args.sampler in ["klms","dpm2","dpm2_ancestral","heun","euler","euler_ancestral"]:
-                        samples = sampler_fn(
-                            c=c, 
-                            uc=uc, 
-                            args=args, 
-                            model_wrap=model_wrap, 
-                            init_latent=init_latent, 
-                            t_enc=t_enc, 
-                            device=device, 
-                            cb=callback)
+                if args.sampler in ["klms","dpm2","dpm2_ancestral","heun","euler","euler_ancestral"]:
+                    samples = sampler_fn(
+                        c=c, 
+                        uc=uc, 
+                        args=args, 
+                        model_wrap=model_wrap, 
+                        init_latent=init_latent, 
+                        t_enc=t_enc, 
+                        device=device, 
+                        cb=callback)
+                else:
+                    # args.sampler == 'plms' or args.sampler == 'ddim':
+                    if init_latent is not None and args.strength > 0:
+                        z_enc = sampler.stochastic_encode(init_latent, torch.tensor([t_enc]*batch_size).to(device), args.seed, args.ddim_eta, args.steps)
                     else:
-                        # args.sampler == 'plms' or args.sampler == 'ddim':
-                        if init_latent is not None and args.strength > 0:
-                            z_enc = sampler.stochastic_encode(init_latent, torch.tensor([t_enc]*batch_size).to(device))
-                        else:
-                            z_enc = torch.randn([args.n_samples, args.C, args.H // args.f, args.W // args.f], device=device)
-                        if args.sampler == 'ddim':
-                            samples = sampler.decode(z_enc, 
-                                                     c, 
-                                                     t_enc, 
-                                                     unconditional_guidance_scale=args.scale,
-                                                     unconditional_conditioning=uc,
-                                                     img_callback=callback)
-                        elif args.sampler == 'plms': # no "decode" function in plms, so use "sample"
-                            shape = [args.C, args.H // args.f, args.W // args.f]
-                            samples, _ = sampler.sample(S=args.steps,
-                                                            conditioning=c,
-                                                            batch_size=args.n_samples,
-                                                            shape=shape,
-                                                            verbose=False,
-                                                            unconditional_guidance_scale=args.scale,
-                                                            unconditional_conditioning=uc,
-                                                            eta=args.ddim_eta,
-                                                            x_T=z_enc,
-                                                            img_callback=callback)
-                        else:
-                            raise Exception(f"Sampler {args.sampler} not recognised.")
+                        z_enc = torch.randn([args.n_samples, args.C, args.H // args.f, args.W // args.f], device=device)
+                    if args.sampler == 'ddim':
+                        #kabachuha OUR CASE
+                        samples = sampler.sample(t_enc, 
+                                                 c, 
+                                                 z_enc, 
+                                                 unconditional_guidance_scale=args.scale,
+                                                 unconditional_conditioning=uc,
+                                                 sampler = args.sampler,
+                                                 img_callback=callback
+                                                 )
+                    elif args.sampler == 'plms': # no "decode" function in plms, so use "sample"
+                        shape = [args.C, args.H // args.f, args.W // args.f]
+                        samples, _ = sampler.sample(S=args.steps,
+                                                        conditioning=c,
+                                                        batch_size=args.n_samples,
+                                                        shape=shape,
+                                                        verbose=False,
+                                                        unconditional_guidance_scale=args.scale,
+                                                        unconditional_conditioning=uc,
+                                                        eta=args.ddim_eta,
+                                                        x_T=z_enc,
+                                                        img_callback=callback)
+                    else:
+                        raise Exception(f"Sampler {args.sampler} not recognised.")
+                
+                modelFS.to(device)
 
-                    if return_latent:
-                        results.append(samples.clone())
+                if return_latent:
+                    results.append(samples.clone())
 
-                    x_samples = model.decode_first_stage(samples)
-                    if return_sample:
-                        results.append(x_samples.clone())
+                x_samples = modelFS.decode_first_stage(samples)
+                if return_sample:
+                    results.append(x_samples.clone())
 
-                    x_samples = torch.clamp((x_samples + 1.0) / 2.0, min=0.0, max=1.0)
+                x_samples = torch.clamp((x_samples + 1.0) / 2.0, min=0.0, max=1.0)
 
-                    if return_c:
-                        results.append(c.clone())
+                if return_c:
+                    results.append(c.clone())
 
-                    for x_sample in x_samples:
-                        x_sample = 255. * rearrange(x_sample.cpu().numpy(), 'c h w -> h w c')
-                        image = Image.fromarray(x_sample.astype(np.uint8))
-                        results.append(image)
+                for x_sample in x_samples:
+                    x_sample = 255. * rearrange(x_sample.cpu().numpy(), 'c h w -> h w c')
+                    image = Image.fromarray(x_sample.astype(np.uint8))
+                    results.append(image)
+                
+                if device != "cpu":
+                    mem = torch.cuda.memory_allocated() / 1e6
+                    modelFS.to("cpu")
+                    while torch.cuda.memory_allocated() / 1e6 >= mem:
+                        time.sleep(1)
     return results
 
-# %%
-# !! {"metadata":{
-# !!   "cellView": "form",
-# !!   "id": "CIUJ7lWI4v53"
-# !! }}
+# END DEFS
+
+# START MODEL
+
 #@markdown **Select and Load Model**
 
 model_config = "v1-inference.yaml" #@param ["custom","v1-inference.yaml"]
@@ -643,8 +627,8 @@ custom_config_path = "" #@param {type:"string"}
 custom_checkpoint_path = "" #@param {type:"string"}
 
 load_on_run_all = True #@param {type: 'boolean'}
-half_precision = True # check
-check_sha256 = True #@param {type:"boolean"}
+half_precision = False # check
+check_sha256 = False #@param {type:"boolean"}
 
 model_map = {
     "sd-v1-4-full-ema.ckpt": {'sha256': '14749efc0ae8ef0329391ad4436feb781b402f4fece4883c7ad8d10556d8a36a'},
@@ -662,7 +646,7 @@ ckpt_config_path = custom_config_path if model_config == "custom" else os.path.j
 if os.path.exists(ckpt_config_path):
     print(f"{ckpt_config_path} exists")
 else:
-    ckpt_config_path = "./stable-diffusion/configs/stable-diffusion/v1-inference.yaml"
+    ckpt_config_path = "./old-stable-diffusion/optimizedSD/v1-inference.yaml"
 print(f"Using config: {ckpt_config_path}")
 
 # checkpoint path or download
@@ -690,67 +674,114 @@ if check_sha256 and model_checkpoint != "custom" and ckpt_valid:
 if ckpt_valid:
     print(f"Using ckpt: {ckpt_path}")
 
-def load_model_from_config(config, ckpt, verbose=False, device='cuda', half_precision=True):
-    map_location = "cuda" #@param ["cpu", "cuda"]
+# def load_model_from_config(config, ckpt, verbose=False, device='cuda', half_precision=False):
+    # map_location = "cpu" #@param ["cpu", "cuda"]
+    # print(f"Loading model from {ckpt}")
+    # pl_sd = torch.load(ckpt, map_location=map_location)
+    # if "global_step" in pl_sd:
+        # print(f"Global Step: {pl_sd['global_step']}")
+    # sd = pl_sd["state_dict"]
+# # kabachuha optimization insertion
+    # li, lo = [], []
+    # for key, value in sd.items():
+        # sp = key.split(".")
+        # if (sp[0]) == "model":
+            # if "input_blocks" in sp:
+                # li.append(key)
+            # elif "middle_block" in sp:
+                # li.append(key)
+            # elif "time_embed" in sp:
+                # li.append(key)
+            # else:
+                # lo.append(key)
+    # for key in li:
+        # sd["model1." + key[6:]] = sd.pop(key)
+    # for key in lo:
+        # sd["model2." + key[6:]] = sd.pop(key)
+# # optimization insertion end
+    # model = instantiate_from_config(config.model)
+    # m, u = model.load_state_dict(sd, strict=False)
+    # if len(m) > 0 and verbose:
+        # print("missing keys:")
+        # print(m)
+    # if len(u) > 0 and verbose:
+        # print("unexpected keys:")
+        # print(u)
+
+    # if half_precision:
+        # model = model.half().to(device)
+    # else:
+        # model = model.to(device)
+    # model.eval()
+    # return model
+    
+
+
+#if load_on_run_all and ckpt_valid:
+#    local_config = OmegaConf.load(f"{ckpt_config_path}")
+#    model = load_model_from_config(local_config, f"{ckpt_path}",half_precision=half_precision)
+#    device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+#    model = model.to(device)
+
+def load_model_from_config(ckpt, verbose=False):
     print(f"Loading model from {ckpt}")
-    pl_sd = torch.load(ckpt, map_location=map_location)
+    pl_sd = torch.load(ckpt, map_location="cpu")
     if "global_step" in pl_sd:
         print(f"Global Step: {pl_sd['global_step']}")
     sd = pl_sd["state_dict"]
-    model = instantiate_from_config(config.model)
-    m, u = model.load_state_dict(sd, strict=False)
-    if len(m) > 0 and verbose:
-        print("missing keys:")
-        print(m)
-    if len(u) > 0 and verbose:
-        print("unexpected keys:")
-        print(u)
+    return sd
+    
 
-    if half_precision:
-        model = model.half().to(device)
-    else:
-        model = model.to(device)
-    model.eval()
-    return model
+sd = load_model_from_config(f"{ckpt_path}")
+li, lo = [], []
+for key, value in sd.items():
+    sp = key.split(".")
+    if (sp[0]) == "model":
+        if "input_blocks" in sp:
+            li.append(key)
+        elif "middle_block" in sp:
+            li.append(key)
+        elif "time_embed" in sp:
+            li.append(key)
+        else:
+            lo.append(key)
+for key in li:
+    sd["model1." + key[6:]] = sd.pop(key)
+for key in lo:
+    sd["model2." + key[6:]] = sd.pop(key)
 
-if load_on_run_all and ckpt_valid:
-    local_config = OmegaConf.load(f"{ckpt_config_path}")
-    model = load_model_from_config(local_config, f"{ckpt_path}",half_precision=half_precision)
-    device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-    model = model.to(device)
+config = OmegaConf.load(f"{ckpt_config_path}")
 
-# %%
-# !! {"metadata":{
-# !!   "id": "ov3r4RD1tzsT"
-# !! }}
-"""
-# Settings
-"""
+sampler = instantiate_from_config(config.modelUNet)
+_, _ = sampler.load_state_dict(sd, strict=False)
+sampler.eval()
+sampler.cdevice = "cuda"
+sampler.unet_bs = 1
+sampler.turbo = new_opt.turbo
 
-# %%
-# !! {"metadata":{
-# !!   "id": "0j7rgxvLvfay"
-# !! }}
-"""
-### Animation Settings
-"""
+modelCS = instantiate_from_config(config.modelCondStage)
+_, _ = modelCS.load_state_dict(sd, strict=False)
+modelCS.eval()
+modelCS.cond_stage_model.device = "cuda"
 
-# %%
-# !! {"metadata":{
-# !!   "cellView": "form",
-# !!   "id": "8HJN2TE3vh-J"
-# !! }}
+modelFS = instantiate_from_config(config.modelFirstStage)
+_, _ = modelFS.load_state_dict(sd, strict=False)
+modelFS.eval()
+del sd
+
+# ANIM SETTINGS
+
 
 def DeforumAnimArgs():
 
     #@markdown ####**Animation:**
-    animation_mode = 'None' #@param ['None', '2D', '3D', 'Video Input', 'Interpolation'] {type:'string'}
-    max_frames = 1000 #@param {type:"number"}
-    border = 'wrap' #@param ['wrap', 'replicate'] {type:'string'}
+    animation_mode = '2D' #@param ['None', '2D', '3D', 'Video Input', 'Interpolation'] {type:'string'}
+    max_frames = 150#200 #@param {type:"number"}
+    border = 'replicate' #@param ['wrap', 'replicate'] {type:'string'}
 
     #@markdown ####**Motion Parameters:**
-    angle = "0:(0)"#@param {type:"string"}
-    zoom = "0:(1.04)"#@param {type:"string"}
+    angle = "0:(-0.3)"#@param {type:"string"}
+    zoom = "0:(1.035)"#@param {type:"string"}
     translation_x = "0:(0)"#@param {type:"string"}
     translation_y = "0:(0)"#@param {type:"string"}
     translation_z = "0:(10)"#@param {type:"string"}
@@ -836,47 +867,26 @@ def parse_key_frames(string, prompt_parser=None):
         raise RuntimeError('Key Frame string not correctly formatted')
     return frames
 
+# END ANIM SETTINGS
 
-# %%
-# !! {"metadata":{
-# !!   "id": "63UOJvU3xdPS"
-# !! }}
-"""
-### Prompts
-`animation_mode: None` batches on list of *prompts*. `animation_mode: 2D` uses *animation_prompts* key frame sequence
-"""
-
-# %%
-# !! {"metadata":{
-# !!   "id": "2ujwkGZTcGev"
-# !! }}
+# START PROMPT
 
 prompts = [
-    "a beautiful forest by Asher Brown Durand, trending on Artstation", #the first prompt I want
-    "a beautiful portrait of a woman by Artgerm, trending on Artstation", #the second prompt I want
-    #"the third prompt I don't want it I commented it with an",
+    "beautiful painting of sea, sunset, waves, ship, trending on Artstation, dynamic composition", #the first prompt I want
+    "little fox, fire, red, trending on Artstation", #the second prompt I want
+    "dark blue nightsky, buildings, Moscow, trending on Artstation, cgsociety, key visual, official art",
+    "a boy and a girl, ice and fire, love, romantic, makoto shinkai style, anime, japan animation’s background, 200mm camera lens, wide angle, high detail",
+    "sword, sunset, battle, dragon, armored boy, middle ages, ayami kojima style, anime, japan animation, 200mm camera lens, wide angle, high detail"
 ]
 
 animation_prompts = {
-    0: "a beautiful apple, trending on Artstation",
-    20: "a beautiful banana, trending on Artstation",
-    30: "a beautiful coconut, trending on Artstation",
-    40: "a beautiful durian, trending on Artstation",
+    0: "faerie girl with lilac hair in detailed green dress and short brown skirt in meadow, character portrait painting by ilya kuvshinov, yellow eyes, cgsociety, official art, key visual, dynamic composition, rococo",
+    50: "large explosion of smoke and flames, lightning bolts, painting, shock art, high contrast, artstation, dynamic composition, sabattier effect",
+    100: "A foolish samurai warrior wielding a shapeshifting master of darkness wielding a magic sword wielding a foolish samurai warrior wielding a magic sword wielding an UNSPEAKABLE EVIL wielding a foolish shapeshifting coconut wielding a shapeshifting master of darkness wielding a foolish samurai warrior wielding an UNSPEAKABLE coconut wielding a magic sword wielding a shapeshifting sword wielding an evil sword wielding a sword wielding an UNSPEAKABLE EVIL wielding a FOOOOOOOOOOOOOOL wielding a foolish samurai warrior wielding a shapeshifting master of darkness wielding a magic sword wielding a foolish samurai warrior wielding a magic sword, stepped forth to oppose me, samurai jack, cgsociety, 4k 3d render of the exploding delicate catgirls, pink fluffy catgirls, cute pussy cats, fluffy intricate circle, cinematic lighting, surrounded by decorative cats in eldritch forest, enticing, stunning oil painting, tarot card, psychedelic, surrealism, by ayami kojima, peter mohrbacher, takato yamamoto"
 }
 
-# %%
-# !! {"metadata":{
-# !!   "id": "s8RAo2zI-vQm"
-# !! }}
-"""
-# Run
-"""
+# END PROMPT
 
-# %%
-# !! {"metadata":{
-# !!   "id": "qH74gBWDd2oq",
-# !!   "cellView": "form"
-# !! }}
 def DeforumArgs():
     
     #@markdown **Image Settings**
@@ -886,8 +896,8 @@ def DeforumArgs():
 
     #@markdown **Sampling Settings**
     seed = -1 #@param
-    sampler = 'klms' #@param ["klms","dpm2","dpm2_ancestral","heun","euler","euler_ancestral","plms", "ddim"]
-    steps = 50 #@param
+    sampler = 'ddim' #@param ["klms","dpm2","dpm2_ancestral","heun","euler","euler_ancestral","plms", "ddim"]
+    steps = 80 #@param
     scale = 7 #@param
     ddim_eta = 0.0 #@param
     dynamic_threshold = None
@@ -908,9 +918,9 @@ def DeforumArgs():
     outdir = get_output_folder(output_path, batch_name)
     
     #@markdown **Init Settings**
-    use_init = False #@param {type:"boolean"}
-    strength = 0.0 #@param {type:"number"}
-    init_image = "https://cdn.pixabay.com/photo/2022/07/30/13/10/green-longhorn-beetle-7353749_1280.jpg" #@param {type:"string"}
+    use_init = True #@param {type:"boolean"}
+    strength = 0.99 #@param {type:"number"}
+    init_image = "./content/init/elynia-background-big-staff.png" #@param {type:"string"}
     # Whiter areas of the mask are areas that change more
     use_mask = False #@param {type:"boolean"}
     mask_file = "https://www.filterforge.com/wiki/images/archive/b/b7/20080927223728%21Polygonal_gradient_thumb.jpg" #@param {type:"string"}
@@ -1021,6 +1031,7 @@ def render_image_batch(args):
 
 
 def render_animation(args, anim_args):
+    device = "cuda"
     # animations use key framed prompts
     args.prompts = animation_prompts
 
@@ -1052,7 +1063,7 @@ def render_animation(args, anim_args):
     # expand prompts out to per-frame
     prompt_series = pd.Series([np.nan for a in range(anim_args.max_frames)])
     for i, prompt in animation_prompts.items():
-        prompt_series[i] = prompt
+        prompt_series[int(i)] = prompt
     prompt_series = prompt_series.ffill().bfill()
 
     # check for video inits
@@ -1129,6 +1140,11 @@ def render_animation(args, anim_args):
     
         filename = f"{args.timestring}_{frame_idx:05}.png"
         image.save(os.path.join(args.outdir, filename))
+
+#        mem = torch.cuda.memory_allocated() / 1e6
+#        model.to("cpu")
+#        while torch.cuda.memory_allocated() / 1e6 >= mem:
+#            time.sleep(1)
         if not using_vid_init:
             prev_sample = sample
         
@@ -1268,6 +1284,21 @@ def render_interpolation(args, anim_args):
 args = SimpleNamespace(**DeforumArgs())
 anim_args = SimpleNamespace(**DeforumAnimArgs())
 
+args.seed = new_opt.seed
+args.steps = new_opt.steps
+
+if new_opt.init_prompts:
+    print(f"reading prompts from {new_opt.init_prompts}")
+    with open(new_opt.init_prompts, "r") as f:
+        jdata = json.loads(f.read())
+        args.init_image = jdata["init_image"]
+        anim_args.max_frames = jdata["max_frames"]
+        anim_args.zoom = jdata["zoom"]
+        anim_args.translation_x = jdata["translation_x"]
+        anim_args.translation_y = jdata["translation_y"]
+        anim_args.angle = jdata["angle"]
+        animation_prompts = jdata["animation_prompts"]
+
 args.timestring = time.strftime('%Y%m%d%H%M%S')
 args.strength = max(0.0, min(1.0, args.strength))
 
@@ -1294,22 +1325,10 @@ elif anim_args.animation_mode == 'Video Input':
 elif anim_args.animation_mode == 'Interpolation':
     render_interpolation(args, anim_args)
 else:
-    render_image_batch(args)    
+    render_image_batch(args)
 
-# %%
-# !! {"metadata":{
-# !!   "id": "4zV0J_YbMCTx"
-# !! }}
-"""
-# Create video from frames
-"""
 
-# %%
-# !! {"metadata":{
-# !!   "cellView": "form",
-# !!   "id": "no2jP8HTMBM0"
-# !! }}
-skip_video_for_run_all = True #@param {type: 'boolean'}
+skip_video_for_run_all = False #@param {type: 'boolean'}
 fps = 12 #@param {type:"number"}
 #@markdown **Manual Settings**
 use_manual_settings = False #@param {type:"boolean"}
@@ -1360,20 +1379,12 @@ else:
     data_url = "data:video/mp4;base64," + b64encode(mp4).decode()
     display.display( display.HTML(f'<video controls loop><source src="{data_url}" type="video/mp4"></video>') )
 
-# %%
-# !! {"main_metadata":{
-# !!   "accelerator": "GPU",
-# !!   "colab": {
-# !!     "collapsed_sections": [],
-# !!     "provenance": [],
-# !!     "private_outputs": true
-# !!   },
-# !!   "gpuClass": "standard",
-# !!   "kernelspec": {
-# !!     "display_name": "Python 3",
-# !!     "name": "python3"
-# !!   },
-# !!   "language_info": {
-# !!     "name": "python"
-# !!   }
-# !! }}
+toc = time.time()
+
+time_taken = (toc - tic) / 60.0
+
+print(
+    (
+        "Samples finished in {0:.2f} minutes"
+    ).format(time_taken)
+)
