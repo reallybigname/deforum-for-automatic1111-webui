@@ -106,6 +106,19 @@ print(f"output_path: {output_path}")
 setup_environment = True #@param {type:"boolean"}
 print_subprocess = False #@param {type:"boolean"}
 
+#@markdown **Flash Attention with XFormers**
+#@markdown
+#@markdown Up to 2x speedup and lower VRAM usage, somewhat better details
+#@markdown
+#@markdown **but**
+#@markdown
+#@markdown Currently works only on half-precision Nvidia A100, V100, T4, P100 and
+#@markdown
+#@markdown the image result may slightly differ from the vanilla setup with the same settings
+#@markdown
+#@markdown *The feature is experimental right now, use at your own risk!*
+use_xformers_flash_attention = False #@param {type:"boolean"}
+
 if setup_environment:
     import subprocess, time
     print("Setting up environment...")
@@ -129,6 +142,45 @@ if setup_environment:
     print(subprocess.run(['git', 'clone', 'https://github.com/deforum/k-diffusion/'], stdout=subprocess.PIPE).stdout.decode('utf-8'))
     with open('k-diffusion/k_diffusion/__init__.py', 'w') as f:
         f.write('')
+
+    if use_xformers_flash_attention:
+        import sys
+        from sys import platform
+        all_process = [['pip', 'install', 'triton==2.0.0.dev20220701']]
+        for process in all_process:
+            running = subprocess.run(process,stdout=subprocess.PIPE).stdout.decode('utf-8')
+            if print_subprocess:
+                print(running)
+        
+        if platform.system() == 'Windows':
+            x_ver = 'xformers-0.0.14.dev0-cp39-cp39-win_amd64.whl'
+            x_link = 'https://github.com/neonsecret/xformers/releases/download/v0.14/xformers-0.0.14.dev0-cp39-cp39-win_amd64.whl'
+        else:
+            v_card_name = subprocess.run(['nvidia-smi', '--query-gpu=name', '--format=csv,noheader'], stdout=subprocess.PIPE).stdout.decode('utf-8')
+            
+            if 't4' in v_card_name.lower():
+                name_to_download = 'T4'
+            elif 'v100' in v_card_name.lower():
+                name_to_download = 'V100'
+            elif 'a100' in v_card_name.lower():
+                name_to_download = 'A100'
+            elif 'p100' in v_card_name.lower():
+                name_to_download = 'P100'
+            else:
+                print(v_card_name + ' is currently not supported with xformers flash attention in deforum!')
+            x_ver = 'xformers-0.0.13.dev0-py3-none-any.whl'
+            x_link = 'https://github.com/TheLastBen/fast-stable-diffusion/raw/main/precompiled/' + name_to_download + '/' + x_ver
+        
+        all_process = [
+            ['wget', x_link],
+            ['pip', 'install', x_ver],
+            ['mv', 'stable-diffusion/ldm/modules/attention.py', 'stable-diffusion/ldm/modules/attention_backup.py'],
+            ['wget', 'https://raw.githubusercontent.com/TheLastBen/fast-stable-diffusion/main/precompiled/attention.py', '-P', 'stable-diffusion/ldm/modules']
+        ]
+        for process in all_process:
+            running = subprocess.run(process,stdout=subprocess.PIPE).stdout.decode('utf-8')
+            if print_subprocess:
+                print(running)
 
     end_time = time.time()
     print(f"Environment set up in {end_time-start_time:.0f} seconds")
