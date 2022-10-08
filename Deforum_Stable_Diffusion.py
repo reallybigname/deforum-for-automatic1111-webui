@@ -144,8 +144,7 @@ if setup_environment:
         f.write('')
 
     if use_xformers_flash_attention:
-        import sys
-        from sys import platform
+        import platform
         all_process = [['pip', 'install', 'triton==2.0.0.dev20220701']]
         for process in all_process:
             running = subprocess.run(process,stdout=subprocess.PIPE).stdout.decode('utf-8')
