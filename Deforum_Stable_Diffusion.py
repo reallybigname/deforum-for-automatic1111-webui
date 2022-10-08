@@ -10,6 +10,27 @@ Notebook by [deforum](https://discord.gg/upmXXsrwZc)
 
 # %%
 # !! {"metadata":{
+# !!   "id": "LBamKxcmNI7-"
+# !! }}
+"""
+By using this Notebook, you agree to the following Terms of Use, and license:
+
+**Stablity.AI Model Terms of Use**
+
+This model is open access and available to all, with a CreativeML OpenRAIL-M license further specifying rights and usage.
+
+The CreativeML OpenRAIL License specifies:
+
+You can't use the model to deliberately produce nor share illegal or harmful outputs or content
+CompVis claims no rights on the outputs you generate, you are free to use them and are accountable for their use which must not go against the provisions set in the license
+You may re-distribute the weights and use the model commercially and/or as a service. If you do, please be aware you have to include the same use restrictions as the ones in the license and share a copy of the CreativeML OpenRAIL-M to all your users (please read the license entirely and carefully)
+
+
+Please read the full license here: https://huggingface.co/spaces/CompVis/stable-diffusion-license
+"""
+
+# %%
+# !! {"metadata":{
 # !!   "id": "T4knibRpAQ06"
 # !! }}
 """
@@ -92,7 +113,7 @@ if setup_environment:
     all_process = [
         ['pip', 'install', 'torch==1.12.1+cu113', 'torchvision==0.13.1+cu113', '--extra-index-url', 'https://download.pytorch.org/whl/cu113'],
         ['pip', 'install', 'omegaconf==2.2.3', 'einops==0.4.1', 'pytorch-lightning==1.7.4', 'torchmetrics==0.9.3', 'torchtext==0.13.1', 'transformers==4.21.2', 'kornia==0.6.7'],
-        ['git', 'clone', '-b', 'dev', 'https://github.com/deforum/stable-diffusion'],
+        ['git', 'clone',  '-b', 'dev', 'https://github.com/deforum/stable-diffusion'],
         ['pip', 'install', '-e', 'git+https://github.com/CompVis/taming-transformers.git@master#egg=taming-transformers'],
         ['pip', 'install', '-e', 'git+https://github.com/openai/CLIP.git@main#egg=clip'],
         ['pip', 'install', 'accelerate', 'ftfy', 'jsonmerge', 'matplotlib', 'resize-right', 'timm', 'torchdiffeq'],
@@ -917,7 +938,7 @@ model_map = {
         },
     "sd-v1-4.ckpt": {
         'sha256': 'fe4efff1e174c627256e44ec2991ba279b3816e364b49f9be2abc0b3ff3f8556',
-        'url': 'https://huggingface.co/CompVis/stable-diffusion-v-1-4-original/blob/main/sd-v1-4.ckpt',
+        'url': 'https://huggingface.co/CompVis/stable-diffusion-v-1-4-original/resolve/main/sd-v1-4.ckpt',
         'requires_login': True,
         },
     "sd-v1-3-full-ema.ckpt": {
@@ -1214,12 +1235,12 @@ def parse_key_frames(string, prompt_parser=None):
 # !! }}
 
 prompts = [
-    "a beautiful forest by Asher Brown Durand, trending on Artstation", #the first prompt I want
-    "a beautiful portrait of a woman by Artgerm, trending on Artstation", #the second prompt I want
-    #"a nousr robot, trending on Artstation", #"nousr robot" for robot diffusion
-    #"touhou 1girl komeiji_koishi portrait, green hair", #waifu diffusion prompt
-    #"this prompt has weights if prompt weighting enabled:2 can also do negative:-2", #prompt weights
-    #"the third prompt I don't want it I commented it with an",
+    "a beautiful forest by Asher Brown Durand, trending on Artstation", # the first prompt I want
+    "a beautiful portrait of a woman by Artgerm, trending on Artstation", # the second prompt I want
+    #"this prompt I don't want it I commented it out",
+    #"a nousr robot, trending on Artstation", # use "nousr robot" with the robot diffusion model (see model_checkpoint setting)
+    #"touhou 1girl komeiji_koishi portrait, green hair", # waifu diffusion prompts can use danbooru tag groups (see model_checkpoint)
+    #"this prompt has weights if prompt weighting enabled:2 can also do negative:-2", # (see prompt_weighting)
 ]
 
 animation_prompts = {
