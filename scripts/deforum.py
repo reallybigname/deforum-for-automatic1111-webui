@@ -293,6 +293,8 @@ def on_ui_tabs():
                 with gr.Row():
                     video_settings_path = gr.Textbox("deforum_video-settings.txt", elem_id='deforum_video_settings_path')
                     #reuse_latest_video_settings_btn = gr.Button('Reuse Latest', elem_id='deforum_reuse_latest_video_settings_btn')#TODO
+                with gr.Row():
+                    set_dtype_float32_btn = gr.Button('Set dtype to float32 (to fix py3d on MPS)', elem_id='deforum_set_dtype_float32_btn')
 
                 components['override_these_with_webui'].visible = False
                 components['prompts'].visible = False#hide prompts for the time being
@@ -350,6 +352,17 @@ def on_ui_tabs():
                     inputs=[video_settings_path] + video_settings_component_list,
                     outputs=video_settings_component_list + [stuff],
                 )
+        
+        def mps_fix():
+            torch.set_default_dtype(torch.float32)
+            return [gr.update(interactive=False), ""]
+
+        set_dtype_float32_btn.click(
+                    fn=wrap_gradio_call(mps_fix),
+                    inputs=[set_dtype_float32_btn],
+                    outputs=set_dtype_float32_btn + [stuff],
+        )
+
 
 
     return [(deforum_interface, "Deforum", "deforum_interface")]
