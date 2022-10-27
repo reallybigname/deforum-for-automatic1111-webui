@@ -352,16 +352,16 @@ def on_ui_tabs():
                     inputs=[video_settings_path] + video_settings_component_list,
                     outputs=video_settings_component_list + [stuff],
                 )
-        
-        def mps_fix():
-            torch.set_default_dtype(torch.float32)
-            return [gr.update(interactive=False), ""]
+        torch.set_default_dtype(torch.float32)
+#        def mps_fix():
+#            torch.set_default_dtype(torch.float32)
+#            return [gr.update(interactive=False), ""]
 
-        set_dtype_float32_btn.click(
-                    fn=wrap_gradio_call(mps_fix),
-                    inputs=[set_dtype_float32_btn],
-                    outputs=[set_dtype_float32_btn, stuff],
-        )
+        #set_dtype_float32_btn.click(
+        #            fn=wrap_gradio_call(mps_fix),
+        #            inputs=[],
+        #            outputs=[set_dtype_float32_btn, stuff],
+        #)
 
 
 
