@@ -360,7 +360,7 @@ def on_ui_tabs():
         set_dtype_float32_btn.click(
                     fn=wrap_gradio_call(mps_fix),
                     inputs=[set_dtype_float32_btn],
-                    outputs=set_dtype_float32_btn + [stuff],
+                    outputs=[set_dtype_float32_btn, stuff],
         )
 
 
