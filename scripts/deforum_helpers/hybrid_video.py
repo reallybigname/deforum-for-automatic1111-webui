@@ -1,21 +1,15 @@
 import os
 import pathlib
 import random
-
 import cv2
 import numpy as np
 import PIL
-import torch
 from PIL import Image, ImageChops, ImageOps, ImageEnhance
 from scipy.ndimage.filters import gaussian_filter
-
 from .consistency_check import make_consistency
 from .human_masking import video2humanmasks
 from .load_images import load_image
 from .video_audio_utilities import vid2frames, get_quick_vid_info, get_frame_name
-from modules.shared import opts
-
-# DEBUG_MODE = opts.data.get("deforum_debug_mode_enabled", False)
 
 def delete_all_imgs_in_folder(folder_path):
         files = list(pathlib.Path(folder_path).glob('*.jpg'))
@@ -85,7 +79,7 @@ def hybrid_generation(args, anim_args, root):
 def hybrid_composite(args, anim_args, frame_idx, prev_img, depth_model, hybrid_comp_schedules, root):
     video_frame = os.path.join(args.outdir, 'inputframes', get_frame_name(anim_args.video_init_path) + f"{frame_idx:09}.jpg")
     video_depth_frame = os.path.join(args.outdir, 'hybridframes', get_frame_name(anim_args.video_init_path) + f"_vid_depth{frame_idx:09}.jpg")
-    depth_frame = os.path.join(args.outdir, f"{args.timestring}_depth_{frame_idx-1:09}.png")
+    depth_frame = os.path.join(args.outdir, f"{root.timestring}_depth_{frame_idx-1:09}.png")
     mask_frame = os.path.join(args.outdir, 'hybridframes', get_frame_name(anim_args.video_init_path) + f"_mask{frame_idx:09}.jpg")
     comp_frame = os.path.join(args.outdir, 'hybridframes', get_frame_name(anim_args.video_init_path) + f"_comp{frame_idx:09}.jpg")
     prev_frame = os.path.join(args.outdir, 'hybridframes', get_frame_name(anim_args.video_init_path) + f"_prev{frame_idx:09}.jpg")
@@ -115,7 +109,7 @@ def hybrid_composite(args, anim_args, frame_idx, prev_img, depth_model, hybrid_c
         hybrid_mask = ImageOps.invert(hybrid_mask)
 
     # if a mask type is selected, make composition
-    if hybrid_mask == None:
+    if hybrid_mask is None:
         hybrid_comp = video_image
     else:
         # ensure grayscale
@@ -249,7 +243,7 @@ def image_transform_affine(image_cv2, M, depth=None):
             (image_cv2.shape[1],image_cv2.shape[0]),
             borderMode=cv2.BORDER_REFLECT_101
         )
-    else:
+    else:  # NEED TO IMPLEMENT THE FOLLOWING FUNCTION
         return depth_based_affine_warp(
             image_cv2,
             depth,
@@ -264,7 +258,7 @@ def image_transform_perspective(image_cv2, M, depth=None):
             (image_cv2.shape[1], image_cv2.shape[0]),
             borderMode=cv2.BORDER_REFLECT_101
         )
-    else:
+    else:  # NEED TO IMPLEMENT THE FOLLOWING FUNCTION
         return render_3d_perspective(
             image_cv2,
             depth,

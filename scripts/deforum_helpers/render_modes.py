@@ -1,7 +1,9 @@
 import os
 import time
 import pathlib
-import json
+import re
+import numexpr
+from modules.shared import opts, state
 from .render import render_animation
 from .seed import next_seed
 from .video_audio_utilities import vid2frames
@@ -12,14 +14,7 @@ from .parseq_adapter import ParseqAnimKeys
 from .save_images import save_image
 from .settings import save_settings_from_animation_run
 
-# Webui
-from modules.shared import opts, cmd_opts, state
-
-import re, numexpr
-
-DEBUG_MODE = opts.data.get("deforum_debug_mode_enabled", False)
-
-def render_input_video(args, anim_args, video_args, parseq_args, loop_args, controlnet_args, animation_prompts, root):
+def render_input_video(args, anim_args, video_args, parseq_args, loop_args, controlnet_args, root):
     # create a folder for the video input frames to live in
     video_in_frame_path = os.path.join(args.outdir, 'inputframes') 
     os.makedirs(video_in_frame_path, exist_ok=True)
@@ -50,10 +45,10 @@ def render_input_video(args, anim_args, video_args, parseq_args, loop_args, cont
         args.use_mask = True
         args.overlay_mask = True
 
-    render_animation(args, anim_args, video_args, parseq_args, loop_args, controlnet_args, animation_prompts, root)
+    render_animation(args, anim_args, video_args, parseq_args, loop_args, controlnet_args, root)
 
 # Modified a copy of the above to allow using masking video with out a init video.
-def render_animation_with_video_mask(args, anim_args, video_args, parseq_args, loop_args, controlnet_args, animation_prompts, root):
+def render_animation_with_video_mask(args, anim_args, video_args, parseq_args, loop_args, controlnet_args, root):
     # create a folder for the video input frames to live in
     mask_in_frame_path = os.path.join(args.outdir, 'maskframes') 
     os.makedirs(mask_in_frame_path, exist_ok=True)
@@ -69,7 +64,7 @@ def render_animation_with_video_mask(args, anim_args, video_args, parseq_args, l
     #args.use_init = True
     print(f"Loading {anim_args.max_frames} input frames from {mask_in_frame_path} and saving video frames to {args.outdir}")
 
-    render_animation(args, anim_args, video_args, parseq_args, loop_args, controlnet_args, animation_prompts, root)
+    render_animation(args, anim_args, video_args, parseq_args, loop_args, controlnet_args, root)
 
 def get_parsed_value(value, frame_idx, max_f):
     pattern = r'`.*?`'
@@ -82,7 +77,7 @@ def get_parsed_value(value, frame_idx, max_f):
         parsed_value = parsed_value.replace(matched_string, str(value))
     return parsed_value
 
-def render_interpolation(args, anim_args, video_args, parseq_args, loop_args, controlnet_args, animation_prompts, root):
+def render_interpolation(args, anim_args, video_args, parseq_args, loop_args, controlnet_args, root):
 
     # use parseq if manifest is provided
     use_parseq = parseq_args.parseq_manifest != None and parseq_args.parseq_manifest.strip()
@@ -103,7 +98,7 @@ def render_interpolation(args, anim_args, video_args, parseq_args, loop_args, co
         prompt_series = keys.prompts
     else: 
         print("Generating interpolated prompts for all frames")
-        prompt_series = interpolate_prompts(animation_prompts, anim_args.max_frames)
+        prompt_series = interpolate_prompts(root.animation_prompts, anim_args.max_frames)
     
     state.job_count = anim_args.max_frames
     frame_idx = 0
@@ -131,7 +126,6 @@ def render_interpolation(args, anim_args, video_args, parseq_args, loop_args, co
             print("** RESUMING **")
         
         # grab inputs for current frame generation
-        args.n_samples = 1
         args.prompt = prompt_to_print
         args.scale = keys.cfg_scale_schedule_series[frame_idx]
         args.pix2pix_img_cfg_scale = keys.pix2pix_img_cfg_scale_series[frame_idx]
@@ -141,24 +135,24 @@ def render_interpolation(args, anim_args, video_args, parseq_args, loop_args, co
         scheduled_clipskip = int(keys.clipskip_schedule_series[frame_idx]) if anim_args.enable_clipskip_scheduling and keys.clipskip_schedule_series[frame_idx] is not None else None
         args.checkpoint = keys.checkpoint_schedule_series[frame_idx] if anim_args.enable_checkpoint_scheduling else None
         if anim_args.enable_subseed_scheduling:
-            args.subseed = int(keys.subseed_schedule_series[frame_idx])
-            args.subseed_strength = keys.subseed_strength_schedule_series[frame_idx]
+            root.subseed = int(keys.subseed_schedule_series[frame_idx])
+            root.subseed_strength = keys.subseed_strength_schedule_series[frame_idx]
         else:
-            args.subseed, args.subseed_strength = keys.subseed_schedule_series[frame_idx], keys.subseed_strength_schedule_series[frame_idx]
+            root.subseed, root.subseed_strength = keys.subseed_schedule_series[frame_idx], keys.subseed_strength_schedule_series[frame_idx]
         if use_parseq:
             anim_args.enable_subseed_scheduling = True
-            args.subseed, args.subseed_strength = int(keys.subseed_schedule_series[frame_idx]), keys.subseed_strength_schedule_series[frame_idx]
+            root.subseed, root.subseed_strength = int(keys.subseed_schedule_series[frame_idx]), keys.subseed_strength_schedule_series[frame_idx]
         args.seed = int(keys.seed_schedule_series[frame_idx]) if args.seed_behavior == 'schedule' or use_parseq else args.seed
         opts.data["CLIP_stop_at_last_layers"] = scheduled_clipskip if scheduled_clipskip is not None else opts.data["CLIP_stop_at_last_layers"]
 
         image = generate(args, keys, anim_args, loop_args, controlnet_args, root, frame_idx, sampler_name=scheduled_sampler_name)
-        filename = f"{args.timestring}_{frame_idx:09}.png"
+        filename = f"{root.timestring}_{frame_idx:09}.png"
 
         save_image(image, 'PIL', filename, args, video_args, root)
 
         state.current_image = image
         
         if args.seed_behavior != 'schedule':
-            args.seed = next_seed(args)
+            args.seed = next_seed(args, root)
 
         frame_idx += 1

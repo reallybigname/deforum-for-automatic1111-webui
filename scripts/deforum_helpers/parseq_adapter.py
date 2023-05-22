@@ -6,16 +6,10 @@ from operator import itemgetter
 import numpy as np
 import pandas as pd
 import requests
-import traceback
-import sys
-
-from modules.shared import opts
 from .animation_key_frames import DeformAnimKeys
 from .rich import console
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
-
-DEBUG_MODE = opts.data.get("deforum_debug_mode_enabled", False)
 
 class ParseqAnimKeys():
     def __init__(self, parseq_args, anim_args, video_args, mute=False):

@@ -1,54 +1,15 @@
 import os
-import numpy as np
-import cv2
 from pathlib import Path
-from tqdm import tqdm
-from PIL import Image
-from modules import devices
 import shutil
-from queue import Queue, Empty
-import modules.scripts as scr
-from .frame_interpolation import clean_folder_name
-from .general_utils import duplicate_pngs_from_folder, checksum
-# TODO: move some funcs to this file?
-from .video_audio_utilities import get_quick_vid_info, vid2frames, ffmpeg_stitch_video, extract_number, media_file_has_audio
-from basicsr.utils.download_util import load_file_from_url
-from .rich import console
 import time
 import subprocess
+from .frame_interpolation import clean_folder_name
+from .general_utils import duplicate_pngs_from_folder, checksum
+from .video_audio_utilities import vid2frames, ffmpeg_stitch_video, extract_number, media_file_has_audio
+from basicsr.utils.download_util import load_file_from_url
+from .rich import console
+
 from modules.shared import opts
-
-DEBUG_MODE = opts.data.get("deforum_debug_mode_enabled", False)
-
-def stitch_video(img_batch_id, fps, img_folder_path, audio_path, ffmpeg_location, resize_mode, upscaling_resize, upscaling_resize_w, upscaling_resize_h, extras_upscaler_1, extras_upscaler_2, extras_upscaler_2_visibility, f_crf, f_preset, keep_imgs, orig_vid_name):        
-    parent_folder = os.path.dirname(img_folder_path)
-    grandparent_folder = os.path.dirname(parent_folder)
-    if orig_vid_name is not None:
-        mp4_path = os.path.join(grandparent_folder, str(orig_vid_name) +'_upscaled_' + (('by_' + str(upscaling_resize).replace('.', '-')) if resize_mode == 0 else f"to_{upscaling_resize_w}_{upscaling_resize_h}")) + f"_with_{extras_upscaler_1}" + (f"_then_{extras_upscaler_2}" if extras_upscaler_2_visibility > 0 else "")
-    else:
-        mp4_path = os.path.join(parent_folder, str(img_batch_id) +'_upscaled_' + (('by_' + str(upscaling_resize).replace('.', '-')) if resize_mode == 0 else f"to_{upscaling_resize_w}_{upscaling_resize_h}")) + f"_with_{extras_upscaler_1}_then_{extras_upscaler_2}"
-    
-    mp4_path = mp4_path + '.mp4'
-
-    t = os.path.join(img_folder_path, "%09d.png")
-    add_soundtrack = 'None'
-    if not audio_path is None:
-        add_soundtrack = 'File'
-        
-    exception_raised = False
-    try:
-        ffmpeg_stitch_video(ffmpeg_location=ffmpeg_location, fps=fps, outmp4_path=mp4_path, stitch_from_frame=0, stitch_to_frame=1000000, imgs_path=t, add_soundtrack=add_soundtrack, audio_path=audio_path, crf=f_crf, preset=f_preset)
-    except Exception as e:
-        exception_raised = True
-        print(f"An error occurred while stitching the video: {e}")
-
-    if not exception_raised and not keep_imgs:
-        shutil.rmtree(img_folder_path)
-
-    if (keep_imgs and orig_vid_name is not None) or (orig_vid_name is not None and exception_raised is True):
-        shutil.move(img_folder_path, grandparent_folder)
-
-    return mp4_path
 
 # NCNN Upscale section START
 def process_ncnn_upscale_vid_upload_logic(vid_path, in_vid_fps, in_vid_res, out_vid_res, models_path, upscale_model, upscale_factor, keep_imgs, f_location, f_crf, f_preset, current_user_os):
@@ -159,7 +120,7 @@ def check_and_download_realesrgan_ncnn(models_folder, current_user_os):
     except Exception as e:
         raise Exception(f"Error while downloading {realesrgan_zip_path}. Please download from: {download_url}, and extract its contents into: {models_folder}/realesrgan_ncnn")
 
-def make_upscale_v2(upscale_factor, upscale_model, keep_imgs, imgs_raw_path, imgs_batch_id, deforum_models_path, current_user_os, ffmpeg_location, ffmpeg_crf, ffmpeg_preset, fps, stitch_from_frame, stitch_to_frame, audio_path, add_soundtrack):
+def make_upscale_v2(upscale_factor, upscale_model, keep_imgs, imgs_raw_path, imgs_batch_id, deforum_models_path, current_user_os, ffmpeg_location, ffmpeg_crf, ffmpeg_preset, fps, stitch_from_frame, stitch_to_frame, audio_path, add_soundtrack, srt_path=None):
     # get clean number from 'x2, x3' etc
     clean_num_r_up_factor = extract_number(upscale_factor)
     # set paths
@@ -186,7 +147,7 @@ def make_upscale_v2(upscale_factor, upscale_model, keep_imgs, imgs_raw_path, img
     # set custom path for ffmpeg func below
     upscaled_imgs_path_for_ffmpeg = os.path.join(upscaled_folder_path, f"{imgs_batch_id}_%09d.png")
     # stitch video from upscaled pngs 
-    ffmpeg_stitch_video(ffmpeg_location=ffmpeg_location, fps=fps, outmp4_path=out_upscaled_mp4_path, stitch_from_frame=stitch_from_frame, stitch_to_frame=stitch_to_frame, imgs_path=upscaled_imgs_path_for_ffmpeg, add_soundtrack=add_soundtrack, audio_path=audio_path, crf=ffmpeg_crf, preset=ffmpeg_preset)
+    ffmpeg_stitch_video(ffmpeg_location=ffmpeg_location, fps=fps, outmp4_path=out_upscaled_mp4_path, stitch_from_frame=stitch_from_frame, stitch_to_frame=stitch_to_frame, imgs_path=upscaled_imgs_path_for_ffmpeg, add_soundtrack=add_soundtrack, audio_path=audio_path, crf=ffmpeg_crf, preset=ffmpeg_preset, srt_path=srt_path)
 
     # delete the duplicated raw imgs
     shutil.rmtree(temp_folder_to_keep_raw_ims)
