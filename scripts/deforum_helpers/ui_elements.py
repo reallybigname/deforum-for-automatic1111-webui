@@ -7,11 +7,17 @@ from .gradio_funcs import upload_vid_to_interpolate, upload_pics_to_interpolate,
 def create_gr_elem(d):
     # Capitalize and CamelCase the orig value under "type", which defines gr.inputs.type in lower_case.
     # Examples: "dropdown" becomes gr.Dropdown, and "checkbox_group" becomes gr.CheckboxGroup.
-    # Then create gradio element based on the passed in 'd' (for data).
     obj_type_str = ''.join(word.title() for word in d["type"].split('_'))
     obj_type = getattr(gr, obj_type_str)
 
-    return obj_type(**{k: v for k, v in d.items() if k != "type" and v is not None})
+    # Prepare parameters for gradio element creation
+    params = {k: v for k, v in d.items() if k != "type" and v is not None}
+
+    # If we're creating a Radio element and 'radio_type' is specified, then use it to set gr.radio's type
+    if obj_type_str == 'Radio' and 'radio_type' in params:
+        params['type'] = params.pop('radio_type')
+
+    return obj_type(**params)
 
 # ******** Important message ********
 # All get_tab functions use FormRow()/ FormColumn() by default, unless we have a gr.File inside that row/column, then we use gr.Row()/gr.Column() instead
@@ -462,7 +468,7 @@ def get_tab_output(da, dv):
                                                          frame_interpolation_slow_mo_amount, frame_interpolation_keep_imgs, in_vid_fps_ui_window])
                         interpolate_pics_button.click(fn=upload_pics_to_interpolate,
                                                       inputs=[pics_to_interpolate_chosen_file, frame_interpolation_engine, frame_interpolation_x_amount, frame_interpolation_slow_mo_enabled,
-                                                              frame_interpolation_slow_mo_amount, frame_interpolation_keep_imgs, frame_interpolation_use_upscaled, fps, add_soundtrack, soundtrack_path])
+                                                              frame_interpolation_slow_mo_amount, frame_interpolation_keep_imgs, fps, add_soundtrack, soundtrack_path])
         # VIDEO UPSCALE TAB - not built using our args.py at all - all data and params are here and in .upscaling file
         with gr.TabItem('Video Upscaling'):
             vid_to_upscale_chosen_file = gr.File(label="Video to Upscale", interactive=True, file_count="single", file_types=["video"], elem_id="vid_to_upscale_chosen_file")
