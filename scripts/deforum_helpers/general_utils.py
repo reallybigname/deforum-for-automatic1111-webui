@@ -4,9 +4,10 @@ import hashlib
 from modules.shared import opts
 from basicsr.utils.download_util import load_file_from_url
 
-def debug_print(message):
+def debug_print(message, print_anyway=False):
+    """ prints in debug mode, can print normally when not in debug mode with optional arg """
     DEBUG_MODE = opts.data.get("deforum_debug_mode_enabled", False)
-    if DEBUG_MODE:
+    if DEBUG_MODE or print_anyway:
         print(message)
             
 def checksum(filename, hash_factory=hashlib.blake2b, chunk_num_blocks=128):

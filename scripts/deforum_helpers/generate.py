@@ -47,7 +47,7 @@ def pairwise_repl(iterable):
     next(b, None)
     return zip(a, b)
 
-def generate(args, keys, anim_args, loop_args, controlnet_args, root, frame=0, sampler_name=None):
+def generate(args, keys, anim_args, loop_args, controlnet_args, root, frame=0, sampler_name=None, preview=True):
     if state.interrupted:
         return None
 
@@ -101,7 +101,6 @@ def generate_inner(args, keys, anim_args, loop_args, controlnet_args, root, fram
     processed = None
     mask_image = None
     init_image = None
-    image_init0 = None
 
     if loop_args.use_looper and anim_args.animation_mode in ['2D', '3D']:
         args.strength = loop_args.imageStrength
@@ -112,7 +111,6 @@ def generate_inner(args, keys, anim_args, loop_args, controlnet_args, root, fram
         # find which image to show
         parsedImages = {}
         frameToChoose = 0
-        max_f = anim_args.max_frames - 1
 
         for key, value in jsonImages.items():
             if check_is_number(key):  # default case 0:(1 + t %5), 30:(5-t%2)
@@ -196,7 +194,7 @@ def generate_inner(args, keys, anim_args, loop_args, controlnet_args, root, fram
             restore_faces=p.restore_faces,
             tiling=p.tiling,
             enable_hr=False,
-            denoising_strength=0,
+            denoising_strength=0
         )
 
         print_combined_table(args, anim_args, p_txt, keys, frame)  # print dynamic table to cli

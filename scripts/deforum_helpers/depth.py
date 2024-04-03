@@ -115,16 +115,28 @@ class DepthModel:
         gc.collect()
         torch.cuda.empty_cache()
         
-    def to_image(self, depth: torch.Tensor):
+    def to_image(self, depth: torch.Tensor, output_format='pil'):
         depth = depth.cpu().numpy()
         depth = np.expand_dims(depth, axis=0) if len(depth.shape) == 2 else depth
         self.depth_min, self.depth_max = min(self.depth_min, depth.min()), max(self.depth_max, depth.max())
         denom = max(1e-8, self.depth_max - self.depth_min)
         temp = rearrange((depth - self.depth_min) / denom * 255, 'c h w -> h w c')
-        return Image.fromarray(repeat(temp, 'h w 1 -> h w c', c=3).astype(np.uint8))
-
-    def save(self, filename: str, depth: torch.Tensor):
-        self.to_image(depth).save(filename)
+        temp = repeat(temp, 'h w 1 -> h w c', c=3).astype(np.uint8)
+        
+        if output_format.lower() == 'opencv':
+            # Convert RGB to BGR
+            temp = temp[:, :, ::-1]
+            return temp
+        else:
+            return Image.fromarray(temp)
+        
+    def save(self, filename: str, depth: torch.Tensor, output_format='pil'):
+        image = self.to_image(depth, output_format)
+        
+        if output_format.lower() == 'opencv':
+            cv2.imwrite(filename, image)
+        else:
+            image.save(filename)
 
     def delete_model(self):
         for attr in ['zoe_depth', 'leres_depth']:

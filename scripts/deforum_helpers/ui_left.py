@@ -1,5 +1,6 @@
 from types import SimpleNamespace
 import gradio as gr
+import os
 from .defaults import get_gradio_html
 from .gradio_funcs import change_css, handle_change_functions
 from .args import DeforumArgs, DeforumAnimArgs, ParseqArgs, DeforumOutputArgs, RootArgs, LoopArgs
@@ -19,7 +20,7 @@ def set_arg_lists():
 def setup_deforum_left_side_ui():
     d, da, dp, dv, dr, dloopArgs = set_arg_lists()
     # set up main info accordion on top of the UI
-    with gr.Accordion("Info, Links and Help", open=False, elem_id='main_top_info_accord'):
+    with gr.Accordion("🎯 Info, Links and Help", open=False, elem_id='main_top_info_accord'):
         gr.HTML(value=get_gradio_html('main'))
     # show button to hide/ show gradio's info texts for each element in the UI
     with gr.Row(variant='compact'):

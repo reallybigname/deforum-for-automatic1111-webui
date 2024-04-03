@@ -2,14 +2,17 @@ import json
 import os
 import tempfile
 import time
+import cv2
+from numpy import zeros
 from types import SimpleNamespace
 import modules.paths as ph
 import modules.shared as sh
 from modules.sd_samplers import samplers_for_img2img
 from modules.processing import get_fixed_seed
-from .defaults import get_guided_imgs_default_json, mask_fill_choices
+from .defaults import get_guided_imgs_default_json
 from .deforum_controlnet import controlnet_component_names
 from .general_utils import get_os, substitute_placeholders
+from .composite import make_composite
 
 def RootArgs():
     return {
@@ -36,91 +39,118 @@ def RootArgs():
 
 # 'Midas-3.1-BeitLarge' is temporarily removed until fixed. Can add it back anytime as it's supported in the back-end depth code
 def DeforumAnimArgs():
-    return {
+    optical_flow_choices_normal = ['DIS UltraFast', 'DIS Fast', 'DIS Medium', 'DIS Slow', 'DIS Fine', 'DIS UltraFine', 'Farneback', 'RAFT']
+    optical_flow_choices_contrib = ['DeepFlow', 'DenseRLOF', 'DualTVL1', 'PCAFlow', 'SF']
+    optical_flow_choices = optical_flow_choices_normal
+    
+    # IN PROGRESS testing nvidia flows
+    # optical_flow_choices_nvidia = ['NvidiaOpticalFlowBM', 'NvidiaOpticalFlowDual_TVL1', 'NvidiaOpticalFlowPyrLK', 'NvidiaOpticalFlowFarneback', 'NvidiaOpticalFlowDeepFlow']
+    # optical_flow_choices += optical_flow_choices_nvidia
+
+    # test for presence of cv2.optflow to see if we can add the contrib options for flow
+    if hasattr(cv2, 'optflow'):
+        # also test for one of the optical flow types specific to optflow object, in case optflow is still defined without containing the flow functions
+        if hasattr(cv2.optflow, 'calcOpticalFlowDenseRLOF'): 
+            optical_flow_choices += optical_flow_choices_contrib
+    optical_flow_choices_with_none = ['None'] + optical_flow_choices[:]
+    optical_flow_choices_morpho = optical_flow_choices_with_none[:] + ['No Flow (Direct)']
+    composite_mask_lists = make_composite()
+    
+    anim_args = {
         "animation_mode": {
             "label": "Animation mode",
             "type": "radio",
             "choices": ['2D', '3D', 'Video Input', 'Interpolation'],
             "value": "2D",
-            "info": "control animation mode, will hide non relevant params upon change"
+            "info": "set animation mode • hides non-relevant params upon change"
         },
         "max_frames": {
             "label": "Max frames",
             "type": "number",
             "precision": 0,
             "value": 120,
-            "info": "end the animation at this frame number",
+            "info": "end at this frame number",
         },
         "border": {
-            "label": "Border mode",
+            "label": "2D Padding mode",
             "type": "radio",
-            "choices": ['replicate', 'wrap'],
-            "value": "replicate",
-            "info": "controls pixel generation method for images smaller than the frame. hover on the options to see more info"
+            "choices": ['reflect101', 'wrap', 'replicate'],
+            "value": "reflect101",
+            "info": "generation method for new edge pixels • hover selection for info"
+        },
+        "updown_scale": {
+            "label": "Up/downscale warp/animation operations",
+            "type": "radio",
+            "choices": ['None', '1.5x', '2x', '3x', '4x'],
+            "value": "None",
+            "info": "Upscales, processes image warping, downscales - slower"
+        },
+        "animation_behavior": {
+            "label": "Animation behavior",
+            "type": "radio",
+            "choices": ['Normal', 'After Generation'],
+            "value": "Normal",
+            "info": "normal is before generation. after generation is mostly for controlnet when using cadence 1"
         },
         "angle": {
-            "label": "Angle",
+            "label": "Angle° ⭮",
             "type": "textbox",
-            "value": "0: (0)",
-            "info": "rotate canvas clockwise/anticlockwise in degrees per frame"
+            "value": "0:(0)",
+            "info": "2D image [🞤|⚊] • [⭮|⭯] rotate [RIGHT|LEFT] in degrees°"
         },
-
         "zoom": {
-            "label": "Zoom",
+            "label": "Zoom 🔍",
             "type": "textbox",
-            "value": "0: (1.0025+0.002*sin(1.25*3.14*t/30))",
-            "info": "scale the canvas size, multiplicatively. [static = 1.0]"
+            "value": "0:(1.0025+0.002*sin(1.25*3.14*t/30))",
+            "info": "2D image [🞤|⚊] • [🗚|🗛] zooms [IN|OUT] • (static=1.00) (multiplier)"
         },
-
         "translation_x": {
-            "label": "Translation X",
+            "label": "Translation X 🡄🡆",
             "type": "textbox",
-            "value": "0: (0)",
-            "info": "move canvas left/right in pixels per frame"
+            "value": "0:(0)",
+            "info": "3D viewport [🞤|⚊] • 2D image [⚊|🞤] • moves [LEFT|RIGHT] on X axis [🡄|🡆]"
         },
-
         "translation_y": {
-            "label": "Translation Y",
+            "label": "Translation Y 🡇🡅",
             "type": "textbox",
-            "value": "0: (0)",
-            "info": "move canvas up/down in pixels per frame"
+            "value": "0:(0)",
+            "info": "3D viewport [🞤|⚊] • 2D image [⚊|🞤] • moves [UP|DOWN] on Y axis  [🡅|🡇]"
         },
         "translation_z": {
-            "label": "Translation Z",
+            "label": "Translation Z ⇱⇲",
             "type": "textbox",
-            "value": "0: (1.75)",
-            "info": "move canvas towards/away from view [speed set by FOV]"
+            "value": "0:(1.75)",
+            "info": "3D viewport [🞤|⚊] • moves [IN|OUT] on Z axis (speed affected by FOV°) [⇱|⇲]"
         },
         "transform_center_x": {
-            "label": "Transform Center X",
+            "label": "Transform Center X 🡄⯐🡆",
             "type": "textbox",
-            "value": "0: (0.5)",
-            "info": "X center axis for 2D angle/zoom"
+            "value": "0:(0.5)",
+            "info": "2D image [⚊|🞤] • moves [LEFT|RIGHT] center of X axis for angle°/zoom (center=0.5) [🡄|🡆]"
         },
-
         "transform_center_y": {
-            "label": "Transform Center Y",
+            "label": "Transform Center Y 🡅⯐🡇",
             "type": "textbox",
-            "value": "0: (0.5)",
-            "info": "Y center axis for 2D angle/zoom"
+            "value": "0:(0.5)",
+            "info": "2D image [⚊|🞤] • moves [UP|DOWN] center of Y axis for angle°/zoom (center=0.5) [🡅|🡇]"
         },
         "rotation_3d_x": {
-            "label": "Rotation 3D X",
+            "label": "Rotation 3D X ⮍⚊⮏",
             "type": "textbox",
-            "value": "0: (0)",
-            "info": "tilt canvas up/down in degrees per frame"
+            "value": "0:(0)",
+            "info": "3D viewport [🞤|⚊] • pitch [UP|DOWN] by degrees° on X axis (lateral) [⮍⚊⮏]"
         },
         "rotation_3d_y": {
-            "label": "Rotation 3D Y",
+            "label": "Rotation 3D Y ⮎|⮌",
             "type": "textbox",
-            "value": "0: (0)",
-            "info": "pan canvas left/right in degrees per frame"
+            "value": "0:(0)",
+            "info": "3D viewport [⚊|🞤] • yaw [LEFT|RIGHT] by degrees° on Y axis (vertical) [⮎|⮌]"
         },
         "rotation_3d_z": {
-            "label": "Rotation 3D Z",
+            "label": "Rotation 3D Z ⭮/⭯",
             "type": "textbox",
-            "value": "0: (0)",
-            "info": "roll canvas clockwise/anticlockwise"
+            "value": "0:(0)",
+            "info": "3D viewport [🞤|⚊] • roll [RIGHT|LEFT] by degrees° on Z axis (longitudinal) [⭮/⭯]"
         },
         "enable_perspective_flip": {
             "label": "Enable perspective flip",
@@ -131,44 +161,50 @@ def DeforumAnimArgs():
         "perspective_flip_theta": {
             "label": "Perspective flip theta",
             "type": "textbox",
-            "value": "0: (0)",
+            "value": "0:(0)",
             "info": ""
         },
         "perspective_flip_phi": {
             "label": "Perspective flip phi",
             "type": "textbox",
-            "value": "0: (0)",
+            "value": "0:(0)",
             "info": ""
         },
         "perspective_flip_gamma": {
             "label": "Perspective flip gamma",
             "type": "textbox",
-            "value": "0: (0)",
+            "value": "0:(0)",
             "info": ""
         },
         "perspective_flip_fv": {
             "label": "Perspective flip tv",
             "type": "textbox",
-            "value": "0: (53)",
+            "value": "0:(53)",
             "info": "the 2D vanishing point of perspective (rec. range 30-160)"
         },
         "noise_schedule": {
             "label": "Noise schedule",
             "type": "textbox",
-            "value": "0: (0.065)",
+            "value": "0:(0.065)",
             "info": ""
         },
         "strength_schedule": {
             "label": "Strength schedule",
             "type": "textbox",
-            "value": "0: (0.65)",
-            "info": "amount of presence of previous frame to influence next frame, also controls steps in the following formula [steps - (strength_schedule * steps)]"
+            "value": "0:(0.65)",
+            "info": "(0-1) similarity to previous frame/init image | also reduces steps taken to [steps*(1-strength)]"
         },
-        "contrast_schedule": "0: (1.0)",
+        "contrast_schedule": {
+            "label": "Contrast schedule",
+            "type": "textbox",
+            "value": "0:(1.0)",
+            "interactive": True,
+            "info": "adjusts the overall contrast per frame [neutral at 1.0, recommended to *not* play with this param]"
+        },
         "cfg_scale_schedule": {
             "label": "CFG scale schedule",
             "type": "textbox",
-            "value": "0: (7)",
+            "value": "0:(7)",
             "info": "how closely the image should conform to the prompt. Lower values produce more creative results. (recommended range 5-15)`"
         },
         "enable_steps_scheduling": {
@@ -180,20 +216,20 @@ def DeforumAnimArgs():
         "steps_schedule": {
             "label": "Steps schedule",
             "type": "textbox",
-            "value": "0: (25)",
+            "value": "0:(25)",
             "info": "mainly allows using more than 200 steps. otherwise, it's a mirror-like param of 'strength schedule'"
         },
         "fov_schedule": {
             "label": "FOV schedule",
             "type": "textbox",
-            "value": "0: (70)",
+            "value": "0:(70)",
             "info": "adjusts the scale at which the canvas is moved in 3D by the translation_z value. [maximum range -180 to +180, with 0 being undefined. Values closer to 180 will make the image have less depth, while values closer to 0 will allow more depth]"
         },
         "aspect_ratio_schedule": {
-            "label": "Aspect Ratio schedule",
+            "label": "Aspect ratio schedule",
             "type": "textbox",
-            "value": "0: (1)",
-            "info": "adjusts the aspect ratio for the depth calculations"
+            "value": "0:(1)",
+            "info": "adjusts the aspect ratio (of the depth calculations only)"
         },
         "aspect_ratio_use_old_formula": {
             "label": "Use old aspect ratio formula",
@@ -204,13 +240,13 @@ def DeforumAnimArgs():
         "near_schedule": {
             "label": "Near schedule",
             "type": "textbox",
-            "value": "0: (200)",
+            "value": "0:(200)",
             "info": ""
         },
         "far_schedule": {
             "label": "Far schedule",
             "type": "textbox",
-            "value": "0: (10000)",
+            "value": "0:(10000)",
             "info": ""
         },
         "seed_schedule": {
@@ -234,13 +270,13 @@ def DeforumAnimArgs():
         "subseed_schedule": {
             "label": "Subseed schedule",
             "type": "textbox",
-            "value": "0: (1)",
+            "value": "0:(1)",
             "info": ""
         },
         "subseed_strength_schedule": {
             "label": "Subseed strength schedule",
             "type": "textbox",
-            "value": "0: (0)",
+            "value": "0:(0)",
             "info": ""
         },
         "enable_sampler_scheduling": {
@@ -294,8 +330,9 @@ def DeforumAnimArgs():
         "clipskip_schedule": {
             "label": "CLIP skip schedule",
             "type": "textbox",
-            "value": "0: (2)",
-            "info": ""
+            "value": "0:(2)",
+            "info": "",
+            "visible": False
         },
         "enable_noise_multiplier_scheduling": {
             "label": "Enable noise multiplier scheduling",
@@ -306,7 +343,7 @@ def DeforumAnimArgs():
         "noise_multiplier_schedule": {
             "label": "Noise multiplier schedule",
             "type": "textbox",
-            "value": "0: (1.05)",
+            "value": "0:(1.05)",
             "info": ""
         },
         "resume_from_timestring": {
@@ -331,7 +368,7 @@ def DeforumAnimArgs():
         "ddim_eta_schedule": {
             "label": "DDIM ETA Schedule",
             "type": "textbox",
-            "value": "0: (0)",
+            "value": "0:(0)",
             "visible": False,
             "info": ""
         },
@@ -344,102 +381,316 @@ def DeforumAnimArgs():
         "ancestral_eta_schedule": {
             "label": "Ancestral ETA Schedule",
             "type": "textbox",
-            "value": "0: (1)",
+            "value": "0:(1)",
             "visible": False,
             "info": ""
         },
         "amount_schedule": {
             "label": "Amount schedule",
             "type": "textbox",
-            "value": "0: (0.1)",
+            "value": "0:(0.1)",
             "info": ""
         },
         "kernel_schedule": {
             "label": "Kernel schedule",
             "type": "textbox",
-            "value": "0: (5)",
+            "value": "0:(5)",
             "info": ""
         },
         "sigma_schedule": {
             "label": "Sigma schedule",
             "type": "textbox",
-            "value": "0: (1)",
+            "value": "0:(1)",
             "info": ""
         },
         "threshold_schedule": {
             "label": "Threshold schedule",
             "type": "textbox",
-            "value": "0: (0)",
+            "value": "0:(0)",
             "info": ""
         },
         "color_coherence": {
             "label": "Color coherence",
             "type": "dropdown",
-            "choices": ['None', 'HSV', 'LAB', 'RGB', 'Video Input', 'Image'],
+            "choices": ['None', 'LAB', 'HSV', 'RGB', 'HM', 'Reinhard', 'MVGD', 'MKL', 'HM-MVGD-HM', 'HM-MKL-HM'],
             "value": "LAB",
-            "info": "choose an algorithm/ method for keeping color coherence across the animation"
+            "info": "method for color match w/sample"
         },
+        "color_coherence_source": {
+            "label": "Color coherence source",
+            "type": "dropdown",
+            "choices": ['First Frame', 'Image Path', 'Video Init', 'Video Path'],
+            "value": "First Frame",
+            "info": "choose a source for the color match sampling"
+        },
+        "color_coherence_behavior": {
+            "label": "Color coherence behavior",
+            "type": "dropdown",
+            "choices": ['Before/After', 'Before', 'After'],
+            "value": "Before/After",
+            "info": "whether color matching happens before and/or after generation"
+        },
+        "color_coherence_in_cadence": {
+            "label": "Color coherence in cadence",
+            "type": "checkbox",
+            "value": False,
+            "info": "color matches in cadence if behavior contains 'After'"
+        },        
         "color_coherence_image_path": {
             "label": "Color coherence image path",
             "type": "textbox",
-            "value": "",
-            "info": ""
+            "value": "https://deforum.github.io/a1/I1.png",
+            "info": "path to an image to use as the color match",
+            "visible": False
         },
-        "color_coherence_video_every_N_frames": {
-            "label": "Color coherence video every N frames",
-            "type": "number",
-            "precision": 0,
-            "value": 1,
-            "info": "",
+        "color_coherence_video_path": {
+            "label": "Color coherence video path",
+            "type": "textbox",
+            "value": "https://deforum.github.io/a1/V1.mp4",
+            "info": "path to a video to use as the color match",
+            "visible": False
+        },
+        "color_coherence_video_from_to_nth": {
+            "label": "Color coherence video from|to|nth",
+            "type": "textbox",
+            "value": "0|-1|1",
+            "info": "frame #'s: from|to|every nth, all frames=0|-1|1",
+            "visible": False
         },
         "color_force_grayscale": {
             "label": "Color force Grayscale",
-            "type": "checkbox",
-            "value": False,
-            "info": "force all frames to be in grayscale"
+            "type": "dropdown",
+            "choices": ['None', 'Before/After', 'Before', 'After'],
+            "value": "None",
+            "info": "force frames to be in grayscale before and/or after generation"
         },
-        "legacy_colormatch": {
-            "label": "Legacy colormatch",
-            "type": "checkbox",
-            "value": False,
-            "info": "apply colormatch before adding noise (use with CN's Tile)"
+        "color_coherence_alpha_schedule": {
+            "label": "Color coherence alpha schedule",
+            "type": "textbox",
+            "value": "0:(1)",
+            "info": "alpha level (0-1) for color coherence each frame (allows drift)"
+        },
+        "loop_comp_type_schedule": {
+            "label": "Loop composite filter schedule",
+            "type": "textbox",
+            "value": '0: ("none")',
+            "info": "compositing type for this frame that becomes the previous frame"
+        },
+        "loop_comp_alpha_schedule": {
+            "label": "Loop composite alpha schedule",
+            "type": "textbox",
+            "value": "0:(1)",
+            "info": "alpha level (0-1) of compositing applied to new image in forward mode, or old image in backward mode"
+        },
+        "loop_comp_conform_method": {
+            "label": "Loop conform flow alignment method",
+            "type": "dropdown",
+            "choices": optical_flow_choices_with_none,
+            "value": "None",
+            "info": "method of optical flow used to align the image composited with the image compositing"
+        },
+        "loop_comp_conform_schedule": {
+            "label": "Loop conform factor schedule",
+            "type": "textbox",
+            "value": "0:(1)",
+            "info": "alignment is achieved with 1 - but other values are possible",
+            "visible": False
+        },
+        "loop_comp_conform_iterations": {
+            "label": "Loop conform iterations",
+            "type": "slider",
+            "minimum": 1,
+            "maximum": 10,
+            "step": 1,
+            "value": 1,
+            "interactive": True,
+            "info": "number of iterations to alignment using structural similarity",
+            "visible": False
+        },
+        "loop_comp_order": {
+            "label": "Loop composite order",
+            "type": "radio",
+            "choices": ['Forward', 'Backward'],
+            "value": "Forward",
+            "info": "[forward: new A⇾B old | backward: old A⇾B new] reverses layer order for compositing & alpha mix"
+        },
+        "morpho_flow": {
+            "label": "Morphological flow",
+            "type": "dropdown",
+            "choices": optical_flow_choices_morpho,
+            "value": "None",
+            "info": "select an optical flow type to enable the morphological schedule"
+        },
+        "morpho_flow_factor_schedule": {
+            "label": "Morphological flow factor schedule",
+            "type": "textbox",
+            "value": "0:(1)",
+            "info": "factor -/+: -1=reverse, 0=none, 1=full, etc.",
+            "visible": False
+        },
+        "morpho_schedule": {
+            "label": "Morphological schedule",
+            "type": "textbox",
+            "value": '0: ("dilate|rect")',
+            "info": "make things dilate, erode, etc - see accordion for help",
+            "visible": False
+        },
+        "morpho_iterations_schedule": {
+            "label": "Morphological iteration schedule",
+            "type": "textbox",
+            "value": '0: (0)',
+            "info": "(integer) # of iterations for morphological schedule (0=disabled)",
+            "visible": False
+        },
+        "morpho_image_type": {
+            "label": "Morphological image type",
+            "type": "radio",
+            "choices": ['Grayscale', '3-Color', 'Bitmap'],
+            "value": "Grayscale",
+            "info": "The way the image is passed to morphology. 3-color does 3 channels separately.",
+            "visible": False
+        },
+        "morpho_bitmap_threshold": {
+            "label": "Morphological bitmap threshold",
+            "type": "textbox",
+            "value": "127|255",
+            "info": "bitmap threshold for b&w image for morphology » Low '0-255|0-255' High",
+            "visible": False
+        },
+        "morpho_cadence_behavior": {
+            "label": "Morphological behavior inside cadence",
+            "type": "radio",
+            "choices": ['None', 'Forward', 'Bounce'],
+            "value": "None",
+            "info": "special morphological behaviors for cadence, forward or bounce mode",
+            "visible": False
+        },
+        "temporal_flow": {
+            "label": "Temporal flow",
+            "type": "dropdown",
+            "choices": optical_flow_choices_with_none,
+            "value": "None",
+            "info": "warps image with optical flow from last img"
+        },
+        "temporal_flow_return_target": {
+            "label": "Temporal flow return image",
+            "type": "radio",
+            "choices": ['Image', 'Target'],
+            "value": "Image",
+            "info": "whether to return the image or the target history image, applying flow from target to image",
+            "visible": False
+        },
+        "temporal_flow_target_frame_schedule": {
+            "label": "Temporal flow target frame schedule",
+            "type": "textbox",
+            "value": "0:(1)",
+            "info": "[integer|0+|default:1] schedule of Nth history frame to reference for optical flow. 0th frame is the initial state of the frame from this cycle. 1st frame is the last cycle.",
+            "visible": False
+        },
+        "temporal_flow_factor_schedule": {
+            "label": "Temporal flow factor schedule",
+            "type": "textbox",
+            "value": "0:(0.5)",
+            "info": "factor -/+: -1=reverse, 0=none, 1=full, etc.",
+            "visible": False
+        },
+        "temporal_flow_cadence_behavior": {
+            "label": "Temporal flow behavior inside cadence",
+            "type": "radio",
+            "choices": ['None', 'Forward', 'Bounce'],
+            "value": "None",
+            "info": "special temporal flow behaviors for cadence, forward or bounce mode",
+            "visible": False
+        },
+        "temporal_flow_motion_stabilizer_factor_schedule": {
+            "label": "Temporal flow motion stabilizer factor schedule",
+            "type": "textbox",
+            "value": "0:(1)",
+            "info": "factor -/+: 1=stabilized frame, 0=off, -1=opposite, etc.",
+            "visible": False
+        },
+        "temporal_flow_rotation_stabilizer_factor_schedule": {
+            "label": "Temporal flow rotation stabilizer factor schedule",
+            "type": "textbox",
+            "value": "0:(1)",
+            "info": "factor -/+: 1=stabilized frame, 0=off, -1=opposite, etc.",
+            "visible": False
+        },
+        "optical_flow_redo_generation": {
+            "label": "Optical flow generation",
+            "type": "dropdown",
+            "choices": optical_flow_choices_with_none,
+            "value": "None",
+            "info": "generates diffusion, gets optical flow from prev diffusion to new diffusion, applies flow to new diffusion, uses as init image for generation (takes 2x as long)"
+        },
+        "redo_flow_factor_schedule": {
+            "label": "Generation flow factor schedule",
+            "type": "textbox",
+            "value": "0:(1)",
+            "info": "factor -/+: -1=reverse, 0=none, 1=normal, etc.",
+            "visible": False
+        },
+        "diffusion_redo": {
+            "label": "Redo generation",
+            "type": "slider",
+            "minimum": 0,
+            "maximum": 50,
+            "step": 1,
+            "value": 0,
+            "interactive": True,
+            "info": "this option renders N times before the final render. it is suggested to lower your steps if you up your redo. seed is randomized during redo generations and restored afterwards"
         },
         "diffusion_cadence": {
             "label": "Cadence",
             "type": "slider",
             "minimum": 1,
-            "maximum": 50,
+            "maximum": 100,
             "step": 1,
             "value": 2,
-            "info": "# of in-between frames that will not be directly diffused"
+            "interactive": True,
+            "info": "creates N-1 frames in-between diffusions"
+        },
+        "cadence_diffusion_easing_schedule": {
+            "label": "Cadence easing schedule",
+            "type": "textbox",
+            "value": "0:(0)",
+            "info": "[range -1/+1] | -1=easing out/in | 0=linear | +1=easing in/out"
         },
         "optical_flow_cadence": {
-            "label": "Optical flow cadence",
+            "label": "Cadence flow",
             "type": "dropdown",
-            "choices": ['None', 'RAFT', 'DIS Medium', 'DIS Fine', 'Farneback'],
+            "choices": optical_flow_choices_with_none,
             "value": "None",
-            "info": "use optical flow estimation for your in-between (cadence) frames"
+            "info": "adds morphing to the blend of in-between cadence images"
+        },
+        "cadence_flow_easing_schedule": {
+            "label": "Cadence flow easing schedule",
+            "type": "textbox",
+            "value": "0:(0)",
+            "info": "[range -1/+1] | -1=easing out/in | 0=linear | +1=easing in/out",
+            "visible": False
         },
         "cadence_flow_factor_schedule": {
             "label": "Cadence flow factor schedule",
             "type": "textbox",
-            "value": "0: (1)",
-            "info": ""
+            "value": "0:(1)",
+            "info": "factor -/+: -1=reverse, 0=none, 1=normal, etc.",
+            "visible": False
         },
-        "optical_flow_redo_generation": {
-            "label": "Optical flow generation",
-            "type": "dropdown",
-            "choices": ['None', 'RAFT', 'DIS Medium', 'DIS Fine', 'Farneback'],
-            "value": "None",
-            "info": "this option takes twice as long because it generates twice in order to capture the optical flow from the previous image to the first generation, then warps the previous image and redoes the generation"
-        },
-        "redo_flow_factor_schedule": {
-            "label": "Generation flow factor schedule",
+        "cadence_flow_warp_factor_schedule": {
+            "label": "Cadence flow warp factor schedule",
             "type": "textbox",
-            "value": "0: (1)",
-            "info": ""
+            "value": '0:("[1]")',
+            "info": "Step distance between A/B image states that flow covers during a cadence cycle.",
+            "visible": False
         },
-        "diffusion_redo": '0',
+        "cadence_save_turbo_frames": {
+            "label": "Save 'turbo' frames",
+            "type": "checkbox",
+            "value": False,
+            "info": "saves source frames from cadence as 'turbo_{timestring}_{index}.png'",
+            "visible": False
+        },
         "noise_type": {
             "label": "Noise type",
             "type": "radio",
@@ -485,14 +736,14 @@ def DeforumAnimArgs():
             "label": "Use depth warping",
             "type": "checkbox",
             "value": True,
-            "info": ""
+            "info": "whether to load depth model for 3D depth warping"
         },
         "depth_algorithm": {
             "label": "Depth Algorithm",
             "type": "dropdown",
             "choices": ['Midas+AdaBins (old)', 'Zoe+AdaBins (old)', 'Midas-3-Hybrid', 'AdaBins', 'Zoe', 'Leres'],
             "value": "Midas-3-Hybrid",
-            "info": "choose an algorithm/ method for keeping color coherence across the animation"
+            "info": "choose a depth algorithm for 3D mode"
         },
         "midas_weight": {
             "label": "MiDaS/Zoe weight",
@@ -503,18 +754,19 @@ def DeforumAnimArgs():
             "visible": False
         },
         "padding_mode": {
-            "label": "Padding mode",
+            "label": "3D Padding mode",
             "type": "radio",
             "choices": ['border', 'reflection', 'zeros'],
             "value": "border",
-            "info": "controls the handling of pixels outside the field of view as they come into the scene"
+            "info": "controls the 3D handling of pixels outside the field of view as they come into the scene",
+            "visible": False
         },
         "sampling_mode": {
-            "label": "Padding mode",
+            "label": "Sampling mode",
             "type": "radio",
             "choices": ['bicubic', 'bilinear', 'nearest'],
             "value": "bicubic",
-            "info": ""
+            "info": "controls sampling quality"
         },
         "save_depth_maps": {
             "label": "Save 3D depth maps",
@@ -523,125 +775,120 @@ def DeforumAnimArgs():
             "info": "save animation's depth maps as extra files"
         },
         "video_init_path": {
-            "label": "Video init path/ URL",
+            "label": "Video init path/URL",
             "type": "textbox",
             "value": 'https://deforum.github.io/a1/V1.mp4',
-            "info": ""
+            "info": "file path or URL to a video file"
         },
         "extract_nth_frame": {
             "label": "Extract nth frame",
             "type": "number",
             "precision": 0,
             "value": 1,
-            "info": ""
+            "info": "only extract every Nth frame of video. note: changes frame rate"
         },
         "extract_from_frame": {
             "label": "Extract from frame",
             "type": "number",
             "precision": 0,
             "value": 0,
-            "info": ""
+            "info": "starting frame index for video extraction"
         },
         "extract_to_frame": {
             "label": "Extract to frame",
             "type": "number",
             "precision": 0,
             "value": -1,
-            "info": ""
+            "info": "ending frame index for video extraction (-1 = entire video)"
         },
         "overwrite_extracted_frames": {
             "label": "Overwrite extracted frames",
             "type": "checkbox",
             "value": False,
-            "info": ""
+            "info": "whether to overwrite previously extracted frames in inputframes folder"
         },
         "use_mask_video": {
             "label": "Use mask video",
             "type": "checkbox",
             "value": False,
-            "info": ""
+            "info": "if checked, make sure you have a valid video mask path"
         },
         "video_mask_path": {
             "label": "Video mask path",
             "type": "textbox",
             "value": 'https://deforum.github.io/a1/VM1.mp4',
-            "info": ""
-        },
-        "hybrid_comp_alpha_schedule": {
-            "label": "Comp alpha schedule",
-            "type": "textbox",
-            "value": "0:(0.5)",
-            "info": ""
-        },
-        "hybrid_comp_mask_blend_alpha_schedule": {
-            "label": "Comp mask blend alpha schedule",
-            "type": "textbox",
-            "value": "0:(0.5)",
-            "info": ""
-        },
-        "hybrid_comp_mask_contrast_schedule": {
-            "label": "Comp mask contrast schedule",
-            "type": "textbox",
-            "value": "0:(1)",
-            "info": ""
-        },
-        "hybrid_comp_mask_auto_contrast_cutoff_high_schedule": {
-            "label": "Comp mask auto contrast cutoff high schedule",
-            "type": "textbox",
-            "value": "0:(100)",
-            "info": ""
-        },
-        "hybrid_comp_mask_auto_contrast_cutoff_low_schedule": {
-            "label": "Comp mask auto contrast cutoff low schedule",
-            "type": "textbox",
-            "value": "0:(0)",
-            "info": ""
-        },
-        "hybrid_flow_factor_schedule": {
-            "label": "Flow factor schedule",
-            "type": "textbox",
-            "value": "0:(1)",
-            "info": ""
+            "info": "video masks obey controls of the mask init tab"
         },
         "hybrid_generate_inputframes": {
             "label": "Generate inputframes",
             "type": "checkbox",
             "value": False,
-            "info": ""
+            "scale": 1,
+            "info": "extract video init path (first step for compositing or motion!)"
+        },
+        "hybrid_comp_save_extra_frames":{
+            "label": "Save extra frames",
+            "type": "checkbox",
+            "value": False,
+            "scale": 1,
+            "info": "Save `hybridframes` for debugging compositing and motion"
+        },
+        "reallybigname_css_btn": {
+            "value": "Inject reallybigname css",
+            "type": "button",
+            "size": "sm",
+            "scale": 1,
+            "elem_classes": "rbn_css_btn"
         },
         "hybrid_generate_human_masks": {
             "label": "Generate human masks",
             "type": "radio",
             "choices": ['None', 'PNGs', 'Video', 'Both'],
             "value": "None",
-            "info": ""
-        },
-        "hybrid_use_first_frame_as_init_image": {
-            "label": "First frame as init image",
-            "type": "checkbox",
-            "value": True,
-            "info": "",
-            "visible": False
+            "info": "not automatic yet! Make a 'Video' mask by starting generation. Once extraction finishes and it starts frame 0, cancel job, use the mask video in your `Video mask path`."
         },
         "hybrid_motion": {
             "label": "Hybrid motion",
-            "type": "radio",
-            "choices": ['None', 'Optical Flow', 'Perspective', 'Affine'],
+            "type": "dropdown",
+            "choices": ['None', 'Matrix Flow', 'Optical Flow', 'Perspective', 'Affine'], # choice of 'Matrix Flow' can be added but is experimental
             "value": "None",
-            "info": ""
+            "info": "Optical flow tracks all pixels. Perspective/Affine are RANSAC camera tracking. Matrix flow is experimental, alters your actual motion path based on matrix and uses flow for movement in the frame."
+        },
+        "hybrid_flow_method": {
+            "label": "Flow method",
+            "type": "dropdown",
+            "choices": optical_flow_choices,
+            "value": "RAFT",
+            "info": "different forms of optical flow capture methods",
+            "visible": False
+        },
+        "hybrid_flow_factor_schedule": {
+            "label": "Flow factor schedule",
+            "type": "textbox",
+            "value": "0:(1)",
+            "info": "factor -/+: -1=reverse, 0=none, 1=normal, etc.",
+            "visible": False
+        },
+        "hybrid_motion_behavior": {
+            "label": "Hybrid motion behavior",
+            "type": "radio",
+            "choices": ['Before Generation', 'After Generation'],
+            "value": "Before Generation",
+            "info": "whether to apply motion to init image or to image after generation",
+            "visible": False
         },
         "hybrid_motion_use_prev_img": {
             "label": "Motion use prev img",
             "type": "checkbox",
             "value": False,
-            "info": "",
+            "info": "gets motion from last frame's generated image to current video image, rather than just using video images",
             "visible": False
         },
         "hybrid_flow_consistency": {
             "label": "Flow consistency mask",
             "type": "checkbox",
             "value": False,
-            "info": "",
+            "info": "masks the edges of moving items to clean up unreliable flows",
             "visible": False
         },
         "hybrid_consistency_blur": {
@@ -651,42 +898,201 @@ def DeforumAnimArgs():
             "maximum": 16,
             "step": 1,
             "value": 2,
-            "visible": False
+            "visible": False,
+            "info": "blur the consistency mask which determines where the flow is applied"
         },
-        "hybrid_flow_method": {
-            "label": "Flow method",
+        # "hybrid_video_init_flow_amount": {
+        #     "label": "Video Init Flow Amount (needs Generate Inputframes)",
+        #     "type": "slider",
+        #     "minimum": 0,
+        #     "maximum": 1,
+        #     "step": 0.01,
+        #     "value": 1
+        # },
+        # "hybrid_cn1_flow_amount": {
+        #     "label": "CN1 Flow Amount",
+        #     "type": "slider",
+        #     "minimum": 0,
+        #     "maximum": 1,
+        #     "step": 0.01,
+        #     "value": 0
+        # },
+        # "hybrid_cn2_flow_amount": {
+        #     "label": "CN2 Flow Amount",
+        #     "type": "slider",
+        #     "minimum": 0,
+        #     "maximum": 1,
+        #     "step": 0.01,
+        #     "value": 0
+        # },
+        # "hybrid_cn3_flow_amount": {
+        #     "label": "CN3 Flow Amount",
+        #     "type": "slider",
+        #     "minimum": 0,
+        #     "maximum": 1,
+        #     "step": 0.01,
+        #     "value": 0
+        # },
+        # "hybrid_cn4_flow_amount": {
+        #     "label": "CN4 Flow Amount",
+        #     "type": "slider",
+        #     "minimum": 0,
+        #     "maximum": 1,
+        #     "step": 0.01,
+        #     "value": 0
+        # },
+        # "hybrid_cn5_flow_amount": {
+        #     "label": "CN5 Flow Amount",
+        #     "type": "slider",
+        #     "minimum": 0,
+        #     "maximum": 1,
+        #     "step": 0.01,
+        #     "value": 0
+        # },
+        "hybrid_composite": {
+            "label": "Hybrid composite",
             "type": "radio",
-            "choices": ['RAFT', 'DIS Medium', 'DIS Fine', 'Farneback'],
-            "value": "RAFT",
-            "info": "",
+            "choices": ['None', 'Normal', 'Before Motion', 'After Generation'],
+            "value": "None",
+            "info": "video mixed into init image (normal or before motion) or image (after generation)",
+        },
+        "hybrid_comp_conform_method": {
+            "label": "Force conform optical flow method",
+            "type": "dropdown",
+            "choices": optical_flow_choices_with_none,
+            "value": "None",
+            "info": "use optical flow to force the conformation of video to image or image to video or somewhere in between",
             "visible": False
         },
-        "hybrid_composite": 'None',  # ['None', 'Normal', 'Before Motion', 'After Generation']
+        "hybrid_comp_conform_iterations": {
+            "label": "Force conform iterations",
+            "type": "slider",
+            "minimum": 1,
+            "maximum": 10,
+            "step": 1,
+            "value": 1,
+            "info": "number of iterations to alignment using structural similarity",
+            "visible": False
+        },
+        "hybrid_comp_conform_schedule": {
+            "label": "Force conform value",
+            "type": "textbox",
+            "value": "0:(1)",
+            "info": "[0-1] forces conformation of shapes: 0=video conforms to image | 0.5=both conform half way to each other | 1=image conforms to video",
+            "visible": False
+        },
         "hybrid_use_init_image": {
             "label": "Use init image as video",
             "type": "checkbox",
             "value": False,
-            "info": "",
-        },
-        "hybrid_comp_mask_type": {
-            "label": "Comp mask type",
-            "type": "radio",
-            "choices": ['None', 'Depth', 'Video Depth', 'Blend', 'Difference'],
-            "value": "None",
-            "info": "",
+            "info": "allows hybrid compositing w/only init image instead of video",
             "visible": False
         },
-        "hybrid_comp_mask_inverse": False,
+        "hybrid_use_first_frame_as_init_image": {
+            "label": "First frame as init image",
+            "type": "checkbox",
+            "value": True,
+            "info": "if inputframes are generated, automatically make the first frame the init image",
+            "visible": True
+        },
+        "hybrid_comp_type": {
+            "label": "Composite type",
+            "type": "dropdown",
+            "choices": ['None'] + composite_mask_lists['color'],
+            "value": "None",
+            "info": "compositing type with mix controlled by compositing alpha",
+            "visible": False
+        },
+        "hybrid_comp_alpha_schedule": {
+            "label": "Composite alpha schedule",
+            "type": "textbox",
+            "value": "0:(0.5)",
+            "info": "range 0-1 | hybrid compositing alpha is the master mix of any hybrid operation you're doing.",
+            "visible": False
+        },
+        "hybrid_comp_mask_type": {
+            "label": "Composite mask type",
+            "type": "dropdown",
+            "choices": ['None', 'Depth', 'Video Depth'] + composite_mask_lists['grayscale'],
+            "value": "None",
+            "info": "mask type for creating 'composite mask' using image and video: 'depth' from image | 'video depth' from video",
+            "visible": False
+        },
+        "hybrid_comp_mask_inverse": {
+            "label": "Composite mask inverse",
+            "type": "checkbox",
+            "value": False,
+            "info": "invert the composite mask",
+            "visible": False
+        },
+        "hybrid_comp_mask_auto_contrast": {
+            "label": "Composite mask auto-contrast",
+            "type": "checkbox",
+            "value": False,
+            "info": "composite mask auto-contrast within low/high schedules",
+            "visible": False
+        },
         "hybrid_comp_mask_equalize": {
-            "label": "Comp mask equalize",
+            "label": "Composite mask equalize",
             "type": "radio",
             "choices": ['None', 'Before', 'After', 'Both'],
             "value": "None",
-            "info": "",
+            "info": "equalize mask before or after auto-contrast operation (or both)",
+            "visible": False
         },
-        "hybrid_comp_mask_auto_contrast": False,
-        "hybrid_comp_save_extra_frames": False
+        "hybrid_comp_mask_do_overlay_mask": {
+            "label": "Use composite mask as overlay mask",
+            "type": "radio",
+            "choices": ['None', 'Overlay', 'Invert Overlay'],
+            "value": "None",
+            "info": "creates overlay mask using composite mask, applied before normal overlay mask, uses settings from overlay mask",
+            "visible": False
+        },
+        "hybrid_comp_mask_alpha_schedule": {
+            "label": "Composite mask alpha schedule",
+            "type": "textbox",
+            "value": "0:(1.0)",
+            "info": "affects hybrid comp mask's alpha (not comp alpha)",
+            "elem-classes": "section_full_width",
+            "visible": False
+        },
+        "hybrid_comp_mask_contrast_schedule": {
+            "label": "Composite mask contrast schedule",
+            "type": "textbox",
+            "value": "0:(1)",
+            "info": "|default 1] contrast multiplier for any hybrid comp mask",
+            "elem-classes": "section_full_width",
+            "visible": False
+        },
+        "hybrid_comp_mask_auto_contrast_cutoff_high_schedule": {
+            "label": "Composite mask auto contrast cutoff high schedule",
+            "type": "textbox",
+            "value": "0:(1)",
+            "info": "[0-1] If using auto-contrast, this is high cutoff percentage (default 1)",
+            "elem-classes": "section_full_width",
+            "visible": False
+        },
+        "hybrid_comp_mask_auto_contrast_cutoff_low_schedule": {
+            "label": "Composite mask auto contrast cutoff low schedule",
+            "type": "textbox",
+            "value": "0:(0)",
+            "info": "[0-1 ]If using auto-contrast, this is low cutoff percentage (default 0)",
+            "elem-classes": "section_full_width",
+            "visible": False
+        }
     }
+    # modifies "type": "textbox"
+    # if not an entry, add placeholder containing value
+    #                  add max_lines of 6
+    for key, value in anim_args.items():
+        if isinstance(value, dict) and value.get("type") == "textbox":
+            if "placeholder" not in value:
+                value["placeholder"] = value["value"]
+            if "lines" not in value:
+                value["lines"] = 1
+            if "max_lines" not in value:
+                value["max_lines"] = 10
+    return anim_args
 
 def DeforumArgs():
     return {
@@ -749,7 +1155,7 @@ def DeforumArgs():
             "value": samplers_for_img2img[0].name,
         },
         "steps": {
-            "label": "step",
+            "label": "Step",
             "type": "slider",
             "minimum": 1,
             "maximum": 200,
@@ -881,7 +1287,7 @@ def DeforumArgs():
             "type": "radio",
             "choices": ['reroll', 'interrupt', 'ignore'],
             "value": "ignore",
-            "info": ""
+            "info": "what to do with blank frames (from glitches or NSFW filter being turned on): reroll with +1 seed, interrupt the animation generation, or do nothing"
         },
         "reroll_patience": {
             "label": "Reroll patience",
@@ -908,7 +1314,7 @@ def LoopArgs():
         "image_strength_schedule": {
             "label": "Image strength schedule",
             "type": "textbox",
-            "value": "0:(0.75)",
+            "value": "0:(0.75)"
         },
         "blendFactorMax": {
             "label": "Blend factor max",
@@ -923,7 +1329,7 @@ def LoopArgs():
         "tweening_frames_schedule": {
             "label": "Tweening frames schedule",
             "type": "textbox",
-            "value": "0:(20)",
+            "value": "0:(20)"
         },
         "color_correction_factor": {
             "label": "Color correction factor",
@@ -983,9 +1389,9 @@ def DeforumOutputArgs():
         "add_soundtrack": {
             "label": "Add soundtrack",
             "type": "radio",
-            "choices": ['None', 'File', 'Init Video'],
+            "choices": ['None', 'File', 'Video Init'],
             "value": "None",
-            "info": "add audio to video from file/url or init video"
+            "info": "add audio to video from file/url or video init"
         },
         "soundtrack_path": {
             "label": "Soundtrack path",
@@ -1067,8 +1473,7 @@ def DeforumOutputArgs():
             "value": False,
             "info": "Interpolate upscaled images, if available",
             "visible": False
-        },        
-
+        }
     }
 
 def get_component_names():

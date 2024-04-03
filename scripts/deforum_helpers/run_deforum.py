@@ -68,6 +68,14 @@ def run_deforum(*args):
         from .render import render_animation
         from .render_modes import render_input_video, render_animation_with_video_mask, render_interpolation
 
+        # IN PROGRESS
+        # START reallybigname dev code to reload render.py (supposed to be removed)
+        import sys
+        import importlib
+        importlib.reload(sys.modules['deforum_helpers.render'])
+        from deforum_helpers.render import render_animation
+        # END reallybigname dev code
+
         tqdm_backup = shared.total_tqdm
         shared.total_tqdm = DeforumTQDM(args, anim_args, parseq_args, video_args)
         try:  # dispatch to appropriate renderer
@@ -105,7 +113,7 @@ def run_deforum(*args):
         
         real_audio_track = None
         if video_args.add_soundtrack != 'None':
-            real_audio_track = anim_args.video_init_path if video_args.add_soundtrack == 'Init Video' else video_args.soundtrack_path
+            real_audio_track = anim_args.video_init_path if video_args.add_soundtrack == 'Video Init' else video_args.soundtrack_path
         
         # Establish path of subtitle file
         if shared.opts.data.get("deforum_save_gen_info_as_srt", False) and shared.opts.data.get("deforum_embed_srt", False):

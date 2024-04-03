@@ -1,65 +1,223 @@
-#vid_to_interpolate_chosen_file .w-full, #pics_to_interpolate_chosen_file .w-full,  #vid_to_upscale_chosen_file .w-full, #controlnet_input_video_chosen_file .w-full, #controlnet_input_video_mask_chosen_file .w-full,#vid_to_depth_chosen_file .w-full {
-	display: flex !important;
-	align-items: flex-start !important;
-	justify-content: center !important;
+/*______________________________________________
+  »»» CSS compiled with LESS from style.less «««
+  ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾*/
+#tab_deforum_interface .mix-in-no-display {
+  display: none !important;
 }
-
+#tab_deforum_interface .mix-in-color-tomato,
+#tab_deforum_interface .mix-in-color-tomato * {
+  color: Tomato !important;
+}
+#tab_deforum_interface .mix-in-color-goldenrod,
+#tab_deforum_interface .mix-in-color-goldenrod * {
+  color: GoldenRod;
+}
+#tab_deforum_interface .mix-in-blue-inline-boxes {
+  display: inline-block !important;
+  font-size: 12px !important;
+  border: 1px solid SteelBlue !important;
+  background-color: rgba(70, 130, 180, 0.2) !important;
+  margin: 1px !important;
+  padding: 1px 3px !important;
+  width: auto !important;
+  white-space: nowrap !important;
+  text-align: center;
+}
+#tab_deforum_interface #deforum_gallery_container #deforum_gallery {
+  min-height: 512px !important;
+}
+#tab_deforum_interface #deforum_gallery_container .livePreview {
+  min-height: 512px !important;
+}
+#tab_deforum_interface .rbn_css_btn {
+  max-width: 200px !important;
+  width: 200px !important;
+  height: 2em !important;
+  padding: 0 !important;
+  font-size: 12pt !important;
+  font-variant: small-caps !important;
+}
+#tab_deforum_interface .tab-nav button {
+  font-size: 12pt;
+  padding: 2px 8px 0 8px !important;
+  font-family: 'Source Sans Pro Narrow', 'ui-sans-serif', 'system-ui', sans-serif;
+}
+#tab_deforum_interface .tab-nav button.selected {
+  font-size: 15pt;
+}
+#tab_deforum_interface #vid_to_interpolate_chosen_file.w-full,
+#tab_deforum_interface #pics_to_interpolate_chosen_file.w-full,
+#tab_deforum_interface #vid_to_upscale_chosen_file.w-full,
+#tab_deforum_interface #controlnet_input_video_chosen_file.w-full,
+#tab_deforum_interface #controlnet_input_video_mask_chosen_file.w-full,
+#tab_deforum_interface #vid_to_depth_chosen_file.w-full {
+  display: flex !important;
+  align-items: flex-start !important;
+  justify-content: center !important;
+}
+#tab_deforum_interface div.progressDiv {
+  position: unset !important;
+}
+#tab_deforum_interface .section_full_width {
+  min-width: 100% !important;
+  max-width: 100% !important;
+  width: 100% !important;
+}
+#tab_deforum_interface .section_top_border {
+  border-top: 1px solid gray !important;
+}
+#tab_deforum_interface .section_right_border {
+  border-right: 1px solid gray !important;
+}
+#tab_deforum_interface .section_bottom_border {
+  border-bottom: 1px solid gray !important;
+}
+#tab_deforum_interface .section_left_border {
+  border-left: 1px solid gray !important;
+}
+#tab_deforum_interface .section_top_pad {
+  padding-top: 8px !important;
+}
+#tab_deforum_interface .section_right_pad {
+  padding-right: 8px !important;
+}
+#tab_deforum_interface .section_bottom_pad {
+  padding-bottom: 8px !important;
+}
+#tab_deforum_interface .section_left_pad {
+  padding-left: 8px !important;
+}
+#tab_deforum_interface ul.morpho_list {
+  list-style-type: square;
+  list-style-position: outside;
+  margin-left: 1.5em !important;
+  margin-bottom: 0 !important;
+}
+#tab_deforum_interface ul.morpho_list user-select:none li {
+  font-size: 12px;
+  margin-bottom: 0 !important;
+}
+#tab_deforum_interface ul.inline-blue-boxes-nowrap {
+  list-style: none;
+  list-style-type: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  width: auto !important;
+  display: inline-block !important;
+}
+#tab_deforum_interface ul.inline-blue-boxes-nowrap li {
+  display: inline-block !important;
+  font-size: 12px !important;
+  border: 1px solid SteelBlue !important;
+  background-color: rgba(70, 130, 180, 0.2) !important;
+  margin: 1px !important;
+  padding: 1px 3px !important;
+  width: auto !important;
+  white-space: nowrap !important;
+  text-align: center;
+}
+#tab_deforum_interface ul.inline-blue-boxes-nowrap li > img {
+  margin: 0 auto !important;
+}
+#tab_deforum_interface span.blue-inline-boxes {
+  display: inline-block !important;
+  font-size: 12px !important;
+  border: 1px solid SteelBlue !important;
+  background-color: rgba(70, 130, 180, 0.2) !important;
+  margin: 1px !important;
+  padding: 1px 3px !important;
+  width: auto !important;
+  white-space: nowrap !important;
+  text-align: center;
+}
+#tab_deforum_interface .nowrap {
+  display: inline-block;
+  white-space: nowrap;
+}
 #tab_deforum_interface #hybrid_msg_html {
-	color: Tomato !important;
-	margin-top: 5px !important;
-	text-align: center !important;
-	font-size: 20px !important;
-	font-weight: bold !important;
+  margin-top: 5px !important;
+  text-align: center !important;
+  font-size: 20px !important;
+  font-weight: bold !important;
 }
-
-#tab_deforum_interface #leres_license_msg {
-	color: GoldenRod;
+#tab_deforum_interface #hybrid_msg_html,
+#tab_deforum_interface #hybrid_msg_html * {
+  color: Tomato !important;
 }
-
-#image_buttons_deforum #img2img_tab,
-#image_buttons_deforum #inpaint_tab,
-#image_buttons_deforum #extras_tab,
-#save_zip_deforum, #save_deforum {
-	display: none !important;
+#tab_deforum_interface #leres_license_msg,
+#tab_deforum_interface #leres_license_msg * {
+  color: GoldenRod;
 }
-
-#main_top_info_accord .label-wrap {
-	gap:2px;
-	padding: 0.5rem; 
+#tab_deforum_interface #controlnet_not_found_html_msg #img2img_tab,
+#tab_deforum_interface #controlnet_not_found_html_msg #img2img_tab,
+#tab_deforum_interface #depth_warp_msg_html #img2img_tab,
+#tab_deforum_interface #image_buttons_deforum #img2img_tab,
+#tab_deforum_interface #controlnet_not_found_html_msg #inpaint_tab,
+#tab_deforum_interface #controlnet_not_found_html_msg #inpaint_tab,
+#tab_deforum_interface #depth_warp_msg_html #inpaint_tab,
+#tab_deforum_interface #image_buttons_deforum #inpaint_tab,
+#tab_deforum_interface #controlnet_not_found_html_msg #extras_tab,
+#tab_deforum_interface #controlnet_not_found_html_msg #extras_tab,
+#tab_deforum_interface #depth_warp_msg_html #extras_tab,
+#tab_deforum_interface #image_buttons_deforum #extras_tab {
+  display: none !important;
 }
-#tab_deforum_interface #controlnet_not_found_html_msg, #tab_deforum_interface #depth_warp_msg_html {
-	color: Tomato;
+#tab_deforum_interface #save_zip_deforum,
+#tab_deforum_interface #save_deforum {
+  display: none !important;
 }
-
-#below_interpolate_butts_msg {
-	text-align: center !important;
-}
-
-#tab_deforum_interface #settings_path_msg {
-	margin: 0.6em;
-	display: flex;
-	align-items: flex-start;
-	justify-content: center;
-}
-
-#tab_deforum_interface .tabs.gradio-tabs.svelte-1g805jl .svelte-vt1mxs.gap {
-	gap:4px !important;
-}
-
 #tab_deforum_interface #main_top_info_accord {
-	padding: 1px; 
+  padding: 1px;
 }
-
-#add_soundtrack .svelte-1p9xokt {
-	padding: 2.25px;
+#tab_deforum_interface #main_top_info_accord .label-wrap {
+  gap: 2px;
+  padding: 0.5rem;
 }
-
-#tab_deforum_interface .wrap.svelte-xwlu1w, #custom_setting_file {
-	height: 85px !important;
-	min-height: 85px !important;
+#tab_deforum_interface #below_interpolate_butts_msg {
+  text-align: center !important;
 }
-
+#tab_deforum_interface #settings_path_msg {
+  margin: 0.6em;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+}
+#tab_deforum_interface .tabs.gradio-tabs.svelte-1g805jl .svelte-vt1mxs.gap {
+  gap: 4px !important;
+}
+#tab_deforum_interface #add_soundtrack .svelte-1p9xokt {
+  padding: 2.25px;
+}
+#tab_deforum_interface .wrap.svelte-xwlu1w,
+#tab_deforum_interface #custom_setting_file {
+  height: 85px !important;
+  min-height: 85px !important;
+}
 #tab_deforum_interface .file-preview-holder {
   overflow-y: auto;
   max-height: 60px;
+}
+#tab_deforum_interface .copy-to-clipboard-effect {
+  cursor: pointer;
+  animation: none;
+  transition: transform 0.3s ease-in-out;
+}
+#tab_deforum_interface .copy-to-clipboard-effect:hover:not(.copy-to-clipboard-active) {
+  transform: scale(1.25);
+  border-color: white !important;
+  background-color: rgba(0, 102, 255, 0.311) !important;
+}
+#tab_deforum_interface .copy-to-clipboard-effect.copy-to-clipboard-active {
+  animation: defanim-click-flip 250ms ease-in-out 1;
+  border-color: #0066ff !important;
+  background-color: rgba(0, 102, 255, 0.648) !important;
+  color: greenyellow;
+}
+@keyframes defanim-click-flip {
+  0% {
+    transform: rotate3d(0, 1, 0.1, 0deg) scale(1.25);
+  }
+  100% {
+    transform: rotate3d(0, 1, 0.1, 360deg) scale(1);
+  }
 }

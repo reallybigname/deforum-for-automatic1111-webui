@@ -1,0 +1,5 @@
+{
+    "llm.modelIdOrEndpoint": "WizardLM/WizardCoder-Python-34B-V1.0",
+    "llm.attributionEndpoint": "http://127.0.0.1:7860/",
+    "llm.configTemplate": "WizardLM/WizardCoder-Python-34B-V1.0"
+}

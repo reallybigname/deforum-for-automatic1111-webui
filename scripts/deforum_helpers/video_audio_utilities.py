@@ -46,7 +46,7 @@ def save_frame(image, file_path):
 def vid2frames(video_path, video_in_frame_path, n=1, overwrite=True, extract_from_frame=0, extract_to_frame=-1, out_img_format='jpg', numeric_files_output = False):
     start_time = time.time()
     if (extract_to_frame <= extract_from_frame) and extract_to_frame != -1:
-        raise RuntimeError('Error: extract_to_frame can not be higher than extract_from_frame')
+        raise RuntimeError('Error: extract_to_frame can not be less than or equal to the extract_from_frame')
 
     if n < 1: n = 1 #HACK Gradio interface does not currently allow min/max in gr.Number(...) 
 
@@ -64,7 +64,7 @@ def vid2frames(video_path, video_in_frame_path, n=1, overwrite=True, extract_fro
             input_content = os.listdir(video_in_frame_path)
 
         # check if existing frame is the same video, if not we need to erase it and repopulate
-        if len(input_content) > 0 and numeric_files_output is False:
+        if len(input_content) > 0 and not numeric_files_output:
             #get the name of the existing frame
             content_name = get_frame_name(input_content[0])
             if not content_name.startswith(name):
@@ -77,7 +77,9 @@ def vid2frames(video_path, video_in_frame_path, n=1, overwrite=True, extract_fro
         if n >= frame_count : 
             raise RuntimeError('Skipping more frames than input video contains. extract_nth_frames larger than input frames')
 
-        expected_frame_count = math.ceil(frame_count / n) 
+        # calculate expected frame count
+        expected_frame_count = min(extract_to_frame-extract_from_frame, math.ceil(frame_count / n))
+
         # Check to see if the frame count is matches the number of files in path
         if overwrite or expected_frame_count != len(input_content):
             shutil.rmtree(video_in_frame_path)
@@ -91,12 +93,13 @@ def vid2frames(video_path, video_in_frame_path, n=1, overwrite=True, extract_fro
             count = extract_from_frame
             t=0
             success = True
+            okay_break = False
             max_workers = int(max(1, (os.cpu_count() / 2) - 1)) # set max threads to cpu cores halved, minus 1. minimum is 1
             with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
                 while success:
                     if state.interrupted:
                         return
-                    if (count <= extract_to_frame or extract_to_frame == -1) and count % n == 0:
+                    if (count < extract_to_frame or extract_to_frame == -1) and count % n == 0:
                         if numeric_files_output == True:
                             file_name = f"{t:09}.{out_img_format}"
                         else:
@@ -104,13 +107,45 @@ def vid2frames(video_path, video_in_frame_path, n=1, overwrite=True, extract_fro
                         file_path = os.path.join(video_in_frame_path, file_name)
                         executor.submit(save_frame, image, file_path)
                         t += 1
+                    elif count >= extract_to_frame and extract_to_frame != -1:
+                        okay_break = True
                     count += 1
                     success, image = vidcap.read()
+                    if okay_break:
+                        break
             print(f"Extracted {count} frames from video in {time.time() - start_time:.2f} seconds!")
         else:
             print("Frames already unpacked")
         vidcap.release()
         return video_fps
+
+def generate_inputframes(video_in_frame_path, overwrite_extracted_frames, video_init_path, extract_nth_frame, extract_from_frame, extract_to_frame):
+    # create folders for the video input frames
+    os.makedirs(video_in_frame_path, exist_ok=True)
+    # save video frames from input video to the video in frame path
+    print(f"Video to extract: {video_init_path}")
+    print(f"Extracting video (1 every {extract_nth_frame}) frames to {video_in_frame_path}...")
+    video_fps = vid2frames(video_path=video_init_path, video_in_frame_path=video_in_frame_path,
+                           n=extract_nth_frame, overwrite=overwrite_extracted_frames,
+                           extract_from_frame=extract_from_frame, extract_to_frame=extract_to_frame)
+    print(f"Video extracted. Data indicates the video is {video_fps}fps (frames per second)")
+    return video_fps
+
+def extract_video_init_without_hybrid(outdir, anim_args, folder_name):
+    cc_vid_path = anim_args.video_init_path
+    generate_inputframes(os.path.join(outdir, folder_name), anim_args.overwrite_extracted_frames, cc_vid_path,
+                         anim_args.extract_nth_frame, anim_args.extract_from_frame, anim_args.extract_to_frame)
+    return folder_name, cc_vid_path 
+
+def extract_video_for_cc_path(outdir, anim_args, folder_name):
+    cc_vid_path = anim_args.color_coherence_video_path
+    fparts = anim_args.color_coherence_video_from_to_nth.split('|')
+    if len(fparts) != 3 or not (fparts[0].isdigit() and (fparts[1].isdigit() or int(fparts[1]) == -1) and fparts[2].isdigit()):
+        raise RuntimeError("Color coherence video from|to|nth was malformed. Check format, numerical in 3 parts divided by pipe characters. only the 2nd number can be -1 (for end)")
+    else:
+        generate_inputframes(os.path.join(outdir, folder_name), anim_args.overwrite_extracted_frames, cc_vid_path,
+                             extract_nth_frame=int(fparts[2]), extract_from_frame=int(fparts[0]), extract_to_frame=int(fparts[1]))
+    return folder_name, cc_vid_path 
 
 # make sure the video_path provided is an existing local file or a web URL with a supported file extension
 def is_vid_path_valid(video_path):
@@ -262,9 +297,7 @@ def get_frame_name(path):
     return name
     
 def get_next_frame(outdir, video_path, frame_idx, mask=False):
-    frame_path = 'inputframes'
-    if (mask): frame_path = 'maskframes'
-    return os.path.join(outdir, frame_path, get_frame_name(video_path) + f"{frame_idx:09}.jpg")
+    return os.path.join(outdir,'maskframes' if mask else 'inputframes', get_frame_name(video_path) + f"{frame_idx:09}.jpg")
      
 def find_ffmpeg_binary():
     try:
@@ -308,6 +341,9 @@ def direct_stitch_vid_from_frames(image_path, fps, add_soundtrack, audio_path):
     out_mp4_path = get_manual_frame_to_vid_output_path(image_path)
     ffmpeg_stitch_video(ffmpeg_location=f_location, fps=fps, outmp4_path=out_mp4_path, stitch_from_frame=min_id, stitch_to_frame=-1, imgs_path=image_path, add_soundtrack=add_soundtrack, audio_path=audio_path, crf=f_crf, preset=f_preset)
 # end of 2 stitch frame to video funcs
+
+# placeholder
+# def rbv_upload_vid(image_path, fps):
 
 # returns True if filename (could be also media URL) contains an audio stream, othehrwise False
 def media_file_has_audio(filename, ffmpeg_location):

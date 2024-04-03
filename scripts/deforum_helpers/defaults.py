@@ -1,3 +1,23 @@
+from .morphological import get_morpho_kernel_keys_and_images, get_morpho_op_keys_and_images
+from .composite import make_composite
+
+# for js debugging
+# onclick_show_all_parents_in_console = """console.log((function(el){var parents = []; while(el.parentNode && el !== document.body){parents.push({tag: el.tagName, classes: Array.from(el.classList)}); el = el.parentNode;} return parents;})(event.target));">"""
+
+# js for inine html event like onclick='', copies text from the element to the clipboard and does animation for user
+morpho_onclick_js = """navigator.clipboard.writeText(this.textContent).then(() => {
+                    this.classList.add('copy-to-clipboard-active');
+                    setTimeout(() => this.classList.remove('copy-to-clipboard-active'), 1000);
+                }).catch(err => console.error('Error occurred copying to clipboard:', err));"""               
+
+morpho_li_copy = f'<li class="copy-to-clipboard-effect" onclick="{morpho_onclick_js}">'
+get_morpho_op_keys_and_images_list = get_morpho_op_keys_and_images()
+morpho_op_key_list_items_html = morpho_li_copy + f'</li>{morpho_li_copy}'.join(get_morpho_op_keys_and_images_list) + '</li>'
+get_morpho_kernel_keys_and_images_list = get_morpho_kernel_keys_and_images()
+morpho_kernel_key_list_items_html = morpho_li_copy + f'</li>{morpho_li_copy}'.join(get_morpho_kernel_keys_and_images_list) + '</li>'
+make_composite_color_list_with_none = ['none'] + make_composite()['color']
+loop_composite_list_items_html = morpho_li_copy + f'</li>{morpho_li_copy}'.join(make_composite_color_list_with_none) + '</li>'
+
 def get_samplers_list():
     return {
         'euler a': 'Euler a',
@@ -23,8 +43,8 @@ def DeforumAnimPrompts():
     return r"""{
     "0": "tiny cute bunny, vibrant diffraction, highly detailed, intricate, ultra hd, sharp photo, crepuscular rays, in focus, by tomasz alen kopera",
     "30": "anthropomorphic clean cat, surrounded by fractals, epic angle and pose, symmetrical, 3d, depth of field, ruan jia and fenghua zhong",
-    "60": "a beautiful coconut --neg photo, realistic",
-    "90": "a beautiful durian, trending on Artstation"
+    "60": "a beautiful flying elephant that has wings for ears,  in the style of lisa frank and pixar",
+    "90": "complicated detailed glass sculpture of a frog, coherenet beams of bluish rainbows"
 }
     """
     
@@ -47,17 +67,16 @@ def get_hybrid_info_html():
             </span>
         </p>
         <ul style="list-style-type:circle; margin-left:1em; margin-bottom:1em;">
-            <li>Composite video with previous frame init image in <b>2D or 3D animation_mode</b> <i>(not for Video Input mode)</i></li>
+            <li>Composite video with previous frame init image in <b>2D or 3D animation_mode</b> <i>(not 'Video Input' mode)</i></li>
             <li>Uses your <b>Init</b> settings for <b>video_init_path, extract_nth_frame, overwrite_extracted_frames</b></li>
-            <li>In Keyframes tab, you can also set <b>color_coherence</b> = '<b>Video Input</b>'</li>
-            <li><b>color_coherence_video_every_N_frames</b> lets you only match every N frames</li>
-            <li>Color coherence may be used with hybrid composite off, to just use video color.</li>
+            <li>In Keyframes tab, you can also set <b>color_coherence</b> = '<b>Video Init</b>'</li>
+            <li>Color coherence with Video Init may be used without hybrid compositing or motion, to just use video color.</li>
             <li>Hybrid motion may be used with hybrid composite off, to just use video motion.</li>
         </ul>
         Hybrid Video Schedules
         <ul style="list-style-type:circle; margin-left:1em; margin-bottom:1em;">
             <li>The alpha schedule controls overall alpha for video mix, whether using a composite mask or not.</li>
-            <li>The <b>hybrid_comp_mask_blend_alpha_schedule</b> only affects the 'Blend' <b>hybrid_comp_mask_type</b>.</li>
+            <li>The <b>hybrid_comp_mask_alpha_schedule</b> only affects the 'Blend' <b>hybrid_comp_mask_type</b>.</li>
             <li>Mask contrast schedule is from 0-255. Normal is 1. Affects all masks.</li>
             <li>Autocontrast low/high cutoff schedules 0-100. Low 0 High 100 is full range. <br>(<i><b>hybrid_comp_mask_auto_contrast</b> must be enabled</i>)</li>
         </ul>
@@ -167,19 +186,93 @@ def get_frame_interpolation_info_html():
 def get_frames_to_video_info_html():
     return """
         <p style="margin-top:0em">
-        Important Notes:
-        <ul style="list-style-type:circle; margin-left:1em; margin-bottom:0.25em">
-            <li>Enter relative to webui folder or Full-Absolute path, and make sure it ends with something like this: '20230124234916_%09d.png', just replace 20230124234916 with your batch ID. The %09d is important, don't forget it!</li>
-            <li>In the filename, '%09d' represents the 9 counting numbers, For '20230124234916_000000001.png', use '20230124234916_%09d.png'</li>
-            <li>If non-deforum frames, use the correct number of counting digits. For files like 'bunnies-0000.jpg', you'd use 'bunnies-%04d.jpg'</li>
-        </ul>
+            Important Notes:
+            <ul style="list-style-type:circle; margin-left:1em; margin-bottom:0.25em">
+                <li>Enter relative to webui folder or Full-Absolute path, and make sure it ends with something like this: '20230124234916_%09d.png', just replace 20230124234916 with your batch ID. The %09d is important, don't forget it!</li>
+                <li>In the filename, '%09d' represents the 9 counting numbers, For '20230124234916_000000001.png', use '20230124234916_%09d.png'</li>
+                <li>If non-deforum frames, use the correct number of counting digits. For files like 'bunnies-0000.jpg', you'd use 'bunnies-%04d.jpg'</li>
+            </ul>
+        </p>
         """
 def get_leres_info_html():
     return 'Note that LeReS has a Non-Commercial <a href="https://github.com/aim-uofa/AdelaiDepth/blob/main/LeReS/LICENSE" target="_blank">license</a>. Use it only for fun/personal use.'
+def get_morpho_html():
+    return """
+        <p style="margin-top:0em">
+            <ul class="morpho_list">
+                <li>Use <b>'Morphological schedule'</b> to set operation|kernel pairs. <span class="nowrap">Format: <span class="blue-inline-boxes">frame#:("operation|kernel")</span>
+                <span class="nowrap">[CasE InsensitivE]</span></span></li>
+                <li><span class="nowrap">Separate ops or kernels with plus (+) to select a random choice from each list:</span> <span class="blue-inline-boxes">frame#:("dilate+erode|rect+ellipse+hellipse")</span></li>
+                <li><span class="nowrap">Random op or kernel picks one at random and it persists through the cadence cycle:</span> <span class="blue-inline-boxes">frame#:("random|random")</span></li>
+                <li><div style="display:inline-block;vertical-align:top;"><b>Operations shown using 'rect' kernel, 1 iteration, in 3-color mode</b> <i>(click to copy to clipoard)</i><br>
+                    <ul class="inline-blue-boxes-nowrap">""" + morpho_op_key_list_items_html + """</ul></div></li>
+                <li><div style="display:inline-block;vertical-align:top;"><b>Kernels: 5x5 grid used by operation. <i>(click to copy to clipoard)</i><br>
+                    <ul class="inline-blue-boxes-nowrap">""" + morpho_kernel_key_list_items_html + """</ul></div></li>
+                <li><b>Iterations:</b><br>
+                    Use <b>'Morphological iteration schedule'</b> to set # of iterations [integer] for current operation/kernel.<br>
+                    <span class="nowrap mix-in-color-tomato"><b>Iterations=0</b> disables the transformation.</span>
+                    <span class="nowrap"><i>Decimals are auto-rounded & equations are okay.</i></span>
+                    <span class="nowrap"><i>Random selects a random operation or kernel for that cycle.</i></span></li>
+                <li><b>Description:</b><br>
+                    1. Converts the color image to grayscale & performs a <a style="color:SteelBlue" href="https://docs.opencv.org/4.8.0/d9/d61/tutorial_py_morphological_ops.html" target="_blank" title="cv2.morphologyEx">morphological transformation 🔗</a>.<br />
+                    2. Calculates optical flow from grayscale image to morphologically transformed grayscale image.<br />
+                    3. Applies the optical flow to your color image using a flow factor schedule.</li>
+            </ul>
+        </p>
+        """
+def get_cadence_easing_key_html():
+    return '''
+        <div style="text-align:center;"><span class="blue-inline-boxes" style="text-align:center;">Easing Curves Key
+        <img width="135" height="24" src="data:image/gif;base64,R0lGODlhhwAYAOeRAAAAAAICAgMDAwUFBQYGBhAQEBISEiMjIysrKzExMTQ0NDY2Njc3Nzg4ODo6Ojw8PD8/P0BAQEVFRUZGRkdHR0pKSktLS01NTU5OTlBQUFJSUlVVVVZWVlpaWlxcXF1dXV9fX2BgYGFhYWNjY2RkZGZmZmdnZ2hoaGlpaWpqamxsbG1tbW5ubnBwcHFxcXV1dXZ2dnd3d3h4eHl5eXp6en19fX5+fn9/f4CAgIGBgYKCgoODg4SEhIWFhYaGhomJiYuLi42NjY+Pj5CQkJGRkZKSkpSUlJiYmJmZmZ6enp+fn6CgoKKioqSkpKWlpaampqenp6qqqqurq6ysrK2tra6urrCwsLOzs7S0tLW1tba2tre3t7i4uLm5ubq6uru7u7+/v8DAwMHBwcLCwsPDw8TExMXFxcbGxsfHx8jIyMnJyczMzM/Pz9LS0tPT09TU1NXV1dnZ2dra2tvb29zc3N7e3t/f3+Dg4OHh4ePj4+Tk5OXl5ebm5ufn5+jo6Onp6erq6uvr6+zs7O3t7e7u7u/v7/Dw8PHx8fLy8vPz8/T09PX19ff39/j4+Pn5+fr6+vz8/P///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////yH+DXJlYWxseWJpZ25hbWUAIfkEAQoA/wAsAAAAAIcAGAAACP4A/wkcSLCgwYMICaIAkLChw4cDAcCASPEgAAAUduzg8aNjR4YVQx40YCiDyJMIARQBlAckyoQAhqz5owiPTTxzwugM0+ElyiJxXPoUCWAGnkVNhA4lmMNPniceLgqUuhQlADtGqopc0aZRlgNaCwJwgiiI0rAvcQQ6i9aghTKQxmxoS9DJnwt0lwLQkzXvwQRdHr0B4VegjUQeCvuMUoct3QBQENWp4VirAkI+FL+UsSiE5n8xAw0qUjksFzalPx+MkSizYgA58ChKqnoCIxGqKwKQcgiI5hNsGG1ZkPvfFTXFxV5keFFFlD92WCiuYAaSGQzJBRRK0RbAjiZfzP6kGU8+DZyb6Pks2kPmRmqfEbo4alMiuUAhc95TbBF8DpgmHgXoEQ0wFFjgcq8lkYgd7tkH2htLaDWAF4xQUYF+ycUkyCBmOSgQB40gUBUAbNChgYcOwXYHIlBg6JcXZIx4BhwFoNiQCG444oUDNgokASMjVGUEIBD0eJAGaDgyRgVGCiRGGFVZoEgNTRLUgBWNuCFdlTEYwuRSWiBXJWhMIIIHZWNaIAgRVTHAiElNAmCEH4Ac4eJnFuiBxZ0IVbFGnC7UccgUfL7WgyBXFGoQAIPEYOQIOW7xgIPMUXVRB0jIcYgQihr0Qh+daqVEI2l84GAJYdyB3k2I/MHGEBYEoGWBCUaSQAKKC3ikg0YaUUBVWwEBADs=">
+        <div style="display: flex; justify-content: space-between; width: 135px;">
+            <div style="padding-left:18px;text-align:left;">-1</div>
+            <div style="text-align:center;">0</div>
+            <div style="padding-right:15px;text-align:right;">+1</div>
+        </div></span></div>
+    '''
+def get_motion_tab_header_html():
+    return """
+        <h3>Motion schedule values are an amount of +/- movement every frame, but 2D or 3D animation mode changes them:</h3>
+        <b>In 2D mode:</b> values shift position of the image inside the viewport • <b>In 3D mode:</b> values shift position of the viewport around the image<br />
+        (enable hints to see guides for <b>[⚊|🞤]</b> or <b>[🞤|⚊]</b> based on each setting)<br />
+        <hr />
+    """
+def get_cadence_flow_warp_factor_html():
+    return """
+        <div>Warp factor schedule may include multiple bracketed entries which are blended together w/optional weighting. <em style="white-space:nowrap;">Omitted weights are treated as 1.</em></div>
+        <div><b>Format: <span class="blue-inline-boxes">Frame #:("[factor|weight] [&hellip;]")</span></b></div>
+        <div><b>Examples: <span class="blue-inline-boxes">0:("[1]"), 30:("[1.5|0.5] [1|1] [0.5|1.5]"), 60:("[0.5|1] [1|1]")</span></b></div>
+    """
+def get_loop_comp_help_html():
+    return """
+        <ul class="morpho_list">
+            <li>Loop Compositing allows you to mix the new image with the previous image with many choices of <span class="nowrap">compositing filters,</span> rather than the new image just becoming the previous image at the <span class="nowrap">end of each loop.</span></li>
+            <li>Alpha determines the amount the result of the operation is mixed <span class="nowrap">with the new image</span>.</li>
+            <li>Alignment of the previous image with the new image is accomplished with optical flow at <span class="nowrap">flow factor 1.</span><span class="nowrap"><i>Other values will do strange things 😉.</i></span></li>
+            <li>Filter types are entered into a schedule. Example: <pre style="display:inline-block;">0:("blend"), 30:("difference")...</pre>
+                <span class="nowrap mix-in-color-tomato">Use 'none' to ensure no loop compositing</span></li>
+        </ul>
+        <div><b>Click any filter type to copy it the clipboard:</b></div>
+        <ul class="inline-blue-boxes-nowrap" style="float:left;">""" + loop_composite_list_items_html + """</ul>
+    """
+    
+def get_hybrid_comp_html():
+    return  """
+        <span style="font-size:1.5em;display:inline-block;margin-top:0.75em;margin-bottom:0;">Hybrid compositing masks are optional.</span>
+        They are grayscale <span class="nowrap">compositing masks</span> generated from <span class="nowrap">mask filter operations</span> using the
+        <span class="nowrap">video frame</span> and <span class="nowrap">current image,</span>
+        then used to determine which parts of the images will be used in <span class="nowrap">final composite.</span>
+        <span class="nowrap">Hybrid composite masks</span> may also be used as an <span class="nowrap">overlay mask</span>
+        <span class="nowrap">(separate from the main overlay mask)</span> to maintain a clean image.
+        <span class="nowrap">There are also 'depth' and 'video depth' mask types, which use a depth map as a mask.</span>
+        <i class='nowrap"><b>Select 'Save extra images' to output the masks in the 'hybridframes' folder.</b></i>
+    """
 
 def get_gradio_html(section_name):
     if section_name.lower() == 'hybrid_video':
         return get_hybrid_info_html()
+    elif section_name.lower() == 'hybrid_comp_msg':
+        return get_hybrid_comp_html()
     elif section_name.lower() == 'composable_masks':
         return get_composable_masks_info_html()
     elif section_name.lower() == 'parseq':
@@ -196,6 +289,16 @@ def get_gradio_html(section_name):
         return get_frames_to_video_info_html()
     elif section_name.lower() == 'leres':
         return get_leres_info_html()
+    elif section_name.lower() == 'morpho':
+        return get_morpho_html()
+    elif section_name.lower() == 'motion_tab_header':
+        return get_motion_tab_header_html()
+    elif section_name.lower() == 'cadence_easing_key':
+        return get_cadence_easing_key_html()
+    elif section_name.lower() == 'cadence_flow_warp_factor':
+        return get_cadence_flow_warp_factor_html()
+    elif section_name.lower() == 'loop_comp_help':
+        return get_loop_comp_help_html()
     else:
         return ""
 

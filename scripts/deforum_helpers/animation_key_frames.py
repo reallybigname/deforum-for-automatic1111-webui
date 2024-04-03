@@ -1,10 +1,10 @@
-import re
 import numpy as np
 import numexpr
 import pandas as pd
 from .prompt import check_is_number
+from modules import shared
 
-class DeformAnimKeys():
+class DeforumAnimKeys():
     def __init__(self, anim_args, seed=-1):
         self.fi = FrameInterpolater(anim_args.max_frames, seed)
         self.angle_series = self.fi.get_inbetweens(self.fi.parse_key_frames(anim_args.angle))
@@ -45,21 +45,40 @@ class DeformAnimKeys():
         self.aspect_ratio_series = self.fi.get_inbetweens(self.fi.parse_key_frames(anim_args.aspect_ratio_schedule))
         self.fov_series = self.fi.get_inbetweens(self.fi.parse_key_frames(anim_args.fov_schedule))
         self.near_series = self.fi.get_inbetweens(self.fi.parse_key_frames(anim_args.near_schedule))
-        self.cadence_flow_factor_schedule_series = self.fi.get_inbetweens(self.fi.parse_key_frames(anim_args.cadence_flow_factor_schedule))
-        self.redo_flow_factor_schedule_series = self.fi.get_inbetweens(self.fi.parse_key_frames(anim_args.redo_flow_factor_schedule))
         self.far_series = self.fi.get_inbetweens(self.fi.parse_key_frames(anim_args.far_schedule))
+        self.loop_comp_type_schedule_series = self.fi.get_inbetweens(self.fi.parse_key_frames(anim_args.loop_comp_type_schedule), is_single_string = True)
+        self.loop_comp_alpha_schedule_series = self.fi.get_inbetweens(self.fi.parse_key_frames(anim_args.loop_comp_alpha_schedule))
+        self.loop_comp_conform_schedule_series = self.fi.get_inbetweens(self.fi.parse_key_frames(anim_args.loop_comp_conform_schedule))
+        self.color_coherence_alpha_schedule_series = self.fi.get_inbetweens(self.fi.parse_key_frames(anim_args.color_coherence_alpha_schedule))
+        self.cadence_diffusion_easing_schedule_series = self.fi.get_inbetweens(self.fi.parse_key_frames(anim_args.cadence_diffusion_easing_schedule))
+        self.cadence_flow_easing_schedule_series = self.fi.get_inbetweens(self.fi.parse_key_frames(anim_args.cadence_flow_easing_schedule))
+        self.cadence_flow_factor_schedule_series = self.fi.get_inbetweens(self.fi.parse_key_frames(anim_args.cadence_flow_factor_schedule))
+        self.cadence_flow_warp_factor_schedule_series = self.fi.get_inbetweens(self.fi.parse_key_frames(anim_args.cadence_flow_warp_factor_schedule), is_single_string = True)
+        self.temporal_flow_factor_schedule_series = self.fi.get_inbetweens(self.fi.parse_key_frames(anim_args.temporal_flow_factor_schedule))
+        self.temporal_flow_target_frame_schedule_series = self.fi.get_inbetweens(self.fi.parse_key_frames(anim_args.temporal_flow_target_frame_schedule))
+        self.temporal_flow_motion_stabilizer_factor_schedule_series = self.fi.get_inbetweens(self.fi.parse_key_frames(anim_args.temporal_flow_motion_stabilizer_factor_schedule))
+        self.temporal_flow_rotation_stabilizer_factor_schedule_series = self.fi.get_inbetweens(self.fi.parse_key_frames(anim_args.temporal_flow_rotation_stabilizer_factor_schedule))
+        self.morpho_flow_factor_schedule_series = self.fi.get_inbetweens(self.fi.parse_key_frames(anim_args.morpho_flow_factor_schedule))
+        self.morpho_schedule_series = self.fi.get_inbetweens(self.fi.parse_key_frames(anim_args.morpho_schedule), is_single_string = True)
+        self.morpho_iterations_schedule_series = self.fi.get_inbetweens(self.fi.parse_key_frames(anim_args.morpho_iterations_schedule))
+        self.redo_flow_factor_schedule_series = self.fi.get_inbetweens(self.fi.parse_key_frames(anim_args.redo_flow_factor_schedule))
+        self.hybrid_comp_conform_schedule_series = self.fi.get_inbetweens(self.fi.parse_key_frames(anim_args.hybrid_comp_conform_schedule))
+        self.hybrid_flow_factor_schedule_series = self.fi.get_inbetweens(self.fi.parse_key_frames(anim_args.hybrid_flow_factor_schedule))
         self.hybrid_comp_alpha_schedule_series = self.fi.get_inbetweens(self.fi.parse_key_frames(anim_args.hybrid_comp_alpha_schedule))
-        self.hybrid_comp_mask_blend_alpha_schedule_series = self.fi.get_inbetweens(self.fi.parse_key_frames(anim_args.hybrid_comp_mask_blend_alpha_schedule))
+        self.hybrid_comp_mask_alpha_schedule_series = self.fi.get_inbetweens(self.fi.parse_key_frames(anim_args.hybrid_comp_mask_alpha_schedule))
         self.hybrid_comp_mask_contrast_schedule_series = self.fi.get_inbetweens(self.fi.parse_key_frames(anim_args.hybrid_comp_mask_contrast_schedule))
         self.hybrid_comp_mask_auto_contrast_cutoff_high_schedule_series = self.fi.get_inbetweens(self.fi.parse_key_frames(anim_args.hybrid_comp_mask_auto_contrast_cutoff_high_schedule))
         self.hybrid_comp_mask_auto_contrast_cutoff_low_schedule_series = self.fi.get_inbetweens(self.fi.parse_key_frames(anim_args.hybrid_comp_mask_auto_contrast_cutoff_low_schedule))
-        self.hybrid_flow_factor_schedule_series = self.fi.get_inbetweens(self.fi.parse_key_frames(anim_args.hybrid_flow_factor_schedule))
 
 class ControlNetKeys():
     def __init__(self, anim_args, controlnet_args):
         self.fi = FrameInterpolater(max_frames=anim_args.max_frames)
         self.schedules = {}
-        for i in range(1, 6): # 5 CN models in total
+        max_models = shared.opts.data.get("control_net_max_models_num", 1)
+        num_of_models = 5
+        if (max_models is not None):
+            num_of_models = 5 if max_models <= 5 else max_models
+        for i in range(1, num_of_models + 1): # 5 CN models in total
             for suffix in ['weight', 'guidance_start', 'guidance_end']:
                 prefix = f"cn_{i}"
                 key = f"{prefix}_{suffix}_schedule_series"
@@ -79,7 +98,7 @@ class LooperAnimKeys():
 
 class FrameInterpolater():
     def __init__(self, max_frames=0, seed=-1) -> None:
-        self.max_frames = max_frames
+        self.max_frames = max_frames + 1
         self.seed = seed
 
     def sanitize_value(self, value):
@@ -88,7 +107,7 @@ class FrameInterpolater():
     def get_inbetweens(self, key_frames, integer=False, interp_method='Linear', is_single_string = False):
         key_frame_series = pd.Series([np.nan for a in range(self.max_frames)])
         # get our ui variables set for numexpr.evaluate
-        max_f = self.max_frames -1
+        max_f = self.max_frames
         s = self.seed
         for i in range(0, self.max_frames):
             if i in key_frames:
@@ -110,7 +129,7 @@ class FrameInterpolater():
             interp_method = 'Linear'
 
         key_frame_series[0] = key_frame_series[key_frame_series.first_valid_index()]
-        key_frame_series[self.max_frames-1] = key_frame_series[key_frame_series.last_valid_index()]
+        key_frame_series[self.max_frames] = key_frame_series[key_frame_series.last_valid_index()]
         key_frame_series = key_frame_series.interpolate(method=interp_method.lower(), limit_direction='both')
         if integer:
             return key_frame_series.astype(int)
@@ -124,7 +143,7 @@ class FrameInterpolater():
         frames = dict()
         for match_object in string.split(","):
             frameParam = match_object.split(":")
-            max_f = self.max_frames -1
+            max_f = self.max_frames
             s = self.seed
             frame = int(self.sanitize_value(frameParam[0])) if check_is_number(self.sanitize_value(frameParam[0].strip())) else int(numexpr.evaluate(frameParam[0].strip().replace("'","",1).replace('"',"",1)[::-1].replace("'","",1).replace('"',"",1)[::-1]))
             frames[frame] = frameParam[1].strip()

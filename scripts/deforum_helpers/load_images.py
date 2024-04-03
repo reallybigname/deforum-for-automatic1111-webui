@@ -1,9 +1,14 @@
 import requests
 import os
-from PIL import Image
+import io
+import cv2
+import numpy as np
+import base64
 import socket
 import torchvision.transforms.functional as TF
+from PIL import Image
 from .general_utils import clean_gradio_path_strings
+from .image_functions import rgb_pil2np_bgr
 
 def load_img(path : str, shape=None, use_alpha_as_mask=False):
     # use_alpha_as_mask: Read the alpha channel of the image as the mask image
@@ -27,7 +32,7 @@ def load_img(path : str, shape=None, use_alpha_as_mask=False):
 
     return image, mask_image
 
-def load_image(image_path :str):
+def load_image(image_path :str, return_np_bgr:bool=False):
     image_path = clean_gradio_path_strings(image_path)
     image = None
     if image_path.startswith('http://') or image_path.startswith('https://'):
@@ -49,7 +54,7 @@ def load_image(image_path :str):
             raise RuntimeError("Init image path or mask image path is not valid")
         image = Image.open(image_path).convert('RGB')
         
-    return image
+    return rgb_pil2np_bgr(image) if return_np_bgr else image
 
 def prepare_mask(mask_input, mask_shape, mask_brightness_adjust=1.0, mask_contrast_adjust=1.0):
     """

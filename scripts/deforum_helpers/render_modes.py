@@ -9,7 +9,7 @@ from .seed import next_seed
 from .video_audio_utilities import vid2frames
 from .prompt import interpolate_prompts
 from .generate import generate
-from .animation_key_frames import DeformAnimKeys
+from .animation_key_frames import DeforumAnimKeys
 from .parseq_adapter import ParseqAnimKeys
 from .save_images import save_image
 from .settings import save_settings_from_animation_run
@@ -25,8 +25,9 @@ def render_input_video(args, anim_args, video_args, parseq_args, loop_args, cont
 
     # determine max frames from length of input frames
     anim_args.max_frames = len([f for f in pathlib.Path(video_in_frame_path).glob('*.jpg')])
+    anim_args.max_frames -= 1
     args.use_init = True
-    print(f"Loading {anim_args.max_frames} input frames from {video_in_frame_path} and saving video frames to {args.outdir}")
+    print(f"Loading {anim_args.max_frames + 1} input frames from {video_in_frame_path} and saving video frames to {args.outdir}")
 
     if anim_args.use_mask_video:
         # create a folder for the mask video input frames to live in
@@ -39,18 +40,18 @@ def render_input_video(args, anim_args, video_args, parseq_args, loop_args, cont
         max_mask_frames = len([f for f in pathlib.Path(mask_in_frame_path).glob('*.jpg')])
 
         # limit max frames if there are less frames in the video mask compared to input video
-        if max_mask_frames < anim_args.max_frames :
+        if max_mask_frames < anim_args.max_frames:
             anim_args.max_mask_frames
-            print ("Video mask contains less frames than init video, max frames limited to number of mask frames.")
+            print ("Video mask contains less frames than video init, max frames limited to number of mask frames.")
         args.use_mask = True
         args.overlay_mask = True
 
     render_animation(args, anim_args, video_args, parseq_args, loop_args, controlnet_args, root)
 
-# Modified a copy of the above to allow using masking video with out a init video.
+# modified a copy of the above to allow using masking video without a video init.
 def render_animation_with_video_mask(args, anim_args, video_args, parseq_args, loop_args, controlnet_args, root):
     # create a folder for the video input frames to live in
-    mask_in_frame_path = os.path.join(args.outdir, 'maskframes') 
+    mask_in_frame_path = os.path.join(args.outdir, 'maskframes')
     os.makedirs(mask_in_frame_path, exist_ok=True)
 
     # save the video frames from mask video
@@ -61,8 +62,9 @@ def render_animation_with_video_mask(args, anim_args, video_args, parseq_args, l
 
     # determine max frames from length of input frames
     anim_args.max_frames = len([f for f in pathlib.Path(mask_in_frame_path).glob('*.jpg')])
+    anim_args.max_frames -= 1
     #args.use_init = True
-    print(f"Loading {anim_args.max_frames} input frames from {mask_in_frame_path} and saving video frames to {args.outdir}")
+    print(f"Loading {anim_args.max_frames + 1} input frames from {mask_in_frame_path} and saving video frames to {args.outdir}")
 
     render_animation(args, anim_args, video_args, parseq_args, loop_args, controlnet_args, root)
 
@@ -83,7 +85,7 @@ def render_interpolation(args, anim_args, video_args, parseq_args, loop_args, co
     use_parseq = parseq_args.parseq_manifest != None and parseq_args.parseq_manifest.strip()
 
     # expand key frame strings to values
-    keys = DeformAnimKeys(anim_args) if not use_parseq else ParseqAnimKeys(parseq_args, anim_args, video_args)
+    keys = DeforumAnimKeys(anim_args) if not use_parseq else ParseqAnimKeys(parseq_args, anim_args, video_args)
 
     # create output folder for the batch
     os.makedirs(args.outdir, exist_ok=True)

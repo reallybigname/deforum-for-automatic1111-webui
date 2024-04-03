@@ -1,5 +1,33 @@
 # This file is used to map deprecated setting names in a dictionary
 # and print a message containing the old and the new names
+#
+# Examples:
+# "my_dropdown": [                    | • changes in "my_dropdown"
+#   ("removed_value", None, True)     |   • removal of value "removed_value"
+#   ("choice1", "Choice One", False), |   • change of value from "choice1" to "Choice One"
+# ],
+# "use_lothar_of_hills":("character_choice", [    | • convert old dropdown/radio to new dropdown/radio:
+#     ("Yes", "Lothar of the Hills"),             |   "use_lothar_of_hills" to "character_choice" |   • "Yes" becomes "Lothar of the Hills"
+#     ("No", "Lotharica of the Plains")           |   • "No" becomes "Lotherica of the Plains"
+# ]),                                             |   • original values removed
+# "sweep_the_leg": [                  | • changes in "sweep_the_leg", convert checkbox to dropdown
+#   (False, "No can defend.", False), |   • False becomes "No can defend."
+#   (True, "Yes sensei!", False),     |   • True  becomes "Yes sensei!"
+# ],                                  |   • original values not removed
+#
+# Possible values:
+# None_|_string__|_tuple________|_list of tuples______________
+# None | "value" | (v1,v2,bool) | [(v1,v2,bool), (v1,v2,bool)]
+#
+#     "input1": None,
+#     "input1": "input1_name_change",
+#     "input1": ("input2_transfer", [
+#       ("value_from_input1", "value_for_input2", boolean (optional)),
+#     ]),
+#     "input1": [
+#       ("value1", "new_value1", bool (optional)),
+#       ("value2", "new value2", bool (optional)),
+#     ],
 
 deprecation_map = {
     "histogram_matching": None,
@@ -9,8 +37,11 @@ deprecation_map = {
         ("Match Frame 0 HSV", "HSV", False),
         ("Match Frame 0 LAB", "LAB", False),
         ("Match Frame 0 RGB", "RGB", False),
-        # ,("removed_value", None, True) # for removed values, if we'll need in the future
+        ("color_coherence_source", [("Image", "Image Path", False), ("Video Input", "Video Init", False)], False),
+        #, ("removed_value", None, True)              # for removed values, if we'll need in the future
     ],
+    "color_coherence_video_every_N_frames": None,
+    "legacy_colormatch": ("color_coherence_behavior", [("True", "Before"), ("False", "Before/After")]),
     "hybrid_composite": [
         (False, "None", False),
         (True, "Normal", False),
@@ -47,11 +78,6 @@ for i in range(1, 6): # 5 CN models in total
     deprecation_map[f"cn_{i}_guidance_end"] = dynamic_num_to_schedule_formatter
 
 def handle_deprecated_settings(settings_json):
-    # Set legacy_colormatch mode to True when importing old files, so results are backwards-compatible. Print a message about it too
-    if 'legacy_colormatch' not in settings_json:
-        settings_json['legacy_colormatch'] = True
-        print('\033[33mlegacy_colormatch is missing from settings file, so we are setting it to *True* for backwards compatability. You are welcome to test your file with that setting being disabled for better color coherency.\033[0m')
-        print("")
     for setting_name, deprecation_info in deprecation_map.items():
         if setting_name in settings_json:
             if deprecation_info is None:

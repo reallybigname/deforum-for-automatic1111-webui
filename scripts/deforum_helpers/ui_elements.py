@@ -23,7 +23,7 @@ def create_gr_elem(d):
 # All get_tab functions use FormRow()/ FormColumn() by default, unless we have a gr.File inside that row/column, then we use gr.Row()/gr.Column() instead
 # ******** Important message ********
 def get_tab_run(d, da):
-    with gr.TabItem('Run'):  # RUN TAB
+    with gr.TabItem('👉 Run') as run_tab:  # RUN TAB
         with FormRow():
             sampler = create_gr_elem(d.sampler)
             steps = create_gr_elem(d.steps)
@@ -42,33 +42,60 @@ def get_tab_run(d, da):
             ddim_eta_schedule = create_gr_elem(da.ddim_eta_schedule)
             ancestral_eta_schedule = create_gr_elem(da.ancestral_eta_schedule)
         # RUN FROM SETTING FILE ACCORD
-        with gr.Accordion('Batch Mode, Resume and more', open=False):
-            with gr.Tab('Batch Mode/ run from setting files'):
+        with gr.Accordion('⏩ Resume Animation • 🎡 Batch Mode • 👴 Pix2Pix', open=False) as resume_and_batch_accord:
+            # RESUME ANIMATION ACCORD
+            with gr.Tab('⏩ Resume Animation'):
+                with FormRow():
+                    resume_from_timestring = create_gr_elem(da.resume_from_timestring)
+                    resume_timestring = create_gr_elem(da.resume_timestring)
+            with gr.Tab('🎡 Batch Mode | Run Setting Files'):
                 with gr.Row():  # TODO: handle this inside one of the args functions?
                     override_settings_with_file = gr.Checkbox(label="Enable batch mode", value=False, interactive=True, elem_id='override_settings',
                                                               info="run from a list of setting .txt files. Upload them to the box on the right (visible when enabled)")
                     custom_settings_file = gr.File(label="Setting files", interactive=True, file_count="multiple", file_types=[".txt"], elem_id="custom_setting_file", visible=False)
-            # RESUME ANIMATION ACCORD
-            with gr.Tab('Resume Animation'):
-                with FormRow():
-                    resume_from_timestring = create_gr_elem(da.resume_from_timestring)
-                    resume_timestring = create_gr_elem(da.resume_timestring)
-            with gr.Row(variant='compact') as pix2pix_img_cfg_scale_row:
-                pix2pix_img_cfg_scale_schedule = create_gr_elem(da.pix2pix_img_cfg_scale_schedule)
+            with gr.Tab('👴 Pix2Pix img_cfg_scale'):
+                with gr.Row(variant='compact') as pix2pix_img_cfg_scale_row:
+                    gr.HTML(value="Only affects Instruct Pix2Pix model")
+                    pix2pix_img_cfg_scale_schedule = create_gr_elem(da.pix2pix_img_cfg_scale_schedule)
     return {k: v for k, v in {**locals(), **vars()}.items()}
 
 def get_tab_keyframes(d, da, dloopArgs):
-    with gr.TabItem('Keyframes'):  # TODO make a some sort of the original dictionary parsing
+    with gr.TabItem('🔑 Keyframes'):  # TODO make a some sort of the original dictionary parsing
         with FormRow():
-            with FormColumn(scale=2):
-                animation_mode = create_gr_elem(da.animation_mode)
-            with FormColumn(scale=1, min_width=180):
-                border = create_gr_elem(da.border)
+            with FormColumn():
+                with FormRow():
+                    with FormColumn(scale=1,min_width=180):
+                        animation_mode = create_gr_elem(da.animation_mode)
+                    with FormColumn(scale=1):
+                        border = create_gr_elem(da.border)
+                        padding_mode = create_gr_elem(da.padding_mode)
+                with FormRow():
+                    with FormColumn(scale=1,min_width=180):
+                        diffusion_cadence = create_gr_elem(da.diffusion_cadence)
+                    with FormColumn(scale=1) as max_frames_wrapper:
+                        max_frames = create_gr_elem(da.max_frames)
         with FormRow():
-            diffusion_cadence = create_gr_elem(da.diffusion_cadence)
-            max_frames = create_gr_elem(da.max_frames)
-        # GUIDED IMAGES ACCORD
-        with gr.Accordion('Guided Images', open=False, elem_id='guided_images_accord') as guided_images_accord:
+            with gr.Accordion('🤹‍♂️ Cadence Options ', open=False, elem_id='cadence_accord') as cadence_accord:  # only shows when in 2d/3d mode or in cadence > 1
+                with FormRow():
+                    with FormColumn(min_width=220, scale=1):
+                        with FormRow():
+                            optical_flow_cadence = create_gr_elem(da.optical_flow_cadence)
+                        with FormRow():
+                            cadence_flow_factor_schedule = create_gr_elem(da.cadence_flow_factor_schedule)
+                        with FormRow():
+                            cadence_flow_warp_factor_schedule = create_gr_elem(da.cadence_flow_warp_factor_schedule)
+                        with FormRow(visible=False) as cadence_flow_warp_factor_schedule_html_row:
+                            gr.HTML(value=get_gradio_html('cadence_flow_warp_factor'))
+                    with FormColumn(min_width=220, scale=1):
+                        with FormRow():
+                            cadence_diffusion_easing_schedule = create_gr_elem(da.cadence_diffusion_easing_schedule)
+                        with FormRow():
+                            cadence_flow_easing_schedule = create_gr_elem(da.cadence_flow_easing_schedule)
+                        with FormRow():
+                            cadence_save_turbo_frames = create_gr_elem(da.cadence_save_turbo_frames)
+                        with FormRow():
+                            gr.HTML(value=get_gradio_html('cadence_easing_key'))
+        with gr.Accordion('🦄 Guided Images', open=False, elem_id='guided_images_accord') as guided_images_accord: # GUIDED IMAGES ACCORD
             # GUIDED IMAGES INFO ACCORD
             with gr.Accordion('*READ ME before you use this mode!*', open=False):
                 gr.HTML(value=get_gradio_html('guided_imgs'))
@@ -87,55 +114,61 @@ def get_tab_keyframes(d, da, dloopArgs):
                 with FormRow():
                     tweening_frames_schedule = create_gr_elem(dloopArgs.tweening_frames_schedule)
                 with FormRow():
-                    color_correction_factor = create_gr_elem(dloopArgs.color_correction_factor)
+                    color_correction_factor = create_gr_elem(dloopArgs.color_correction_factor)       
         # EXTRA SCHEDULES TABS
         with gr.Tabs():
-            with gr.TabItem('Strength'):
+            with gr.TabItem('💪 Strength'):
                 with FormRow():
                     strength_schedule = create_gr_elem(da.strength_schedule)
-            with gr.TabItem('CFG'):
+            with gr.TabItem('📔 CFG'):
                 with FormRow():
                     cfg_scale_schedule = create_gr_elem(da.cfg_scale_schedule)
                 with FormRow():
                     enable_clipskip_scheduling = create_gr_elem(da.enable_clipskip_scheduling)
                 with FormRow():
                     clipskip_schedule = create_gr_elem(da.clipskip_schedule)
-            with gr.TabItem('Seed'):
+            with gr.TabItem('🌱 Seeds'):
                 with FormRow():
-                    seed_behavior = create_gr_elem(d.seed_behavior)
-                with FormRow() as seed_iter_N_row:
-                    seed_iter_N = create_gr_elem(d.seed_iter_N)
-                with FormRow(visible=False) as seed_schedule_row:
-                    seed_schedule = create_gr_elem(da.seed_schedule)
-            with gr.TabItem('SubSeed', open=False) as subseed_sch_tab:
-                with FormRow():
-                    enable_subseed_scheduling = create_gr_elem(da.enable_subseed_scheduling)
-                    subseed_schedule = create_gr_elem(da.subseed_schedule)
-                    subseed_strength_schedule = create_gr_elem(da.subseed_strength_schedule)
-                with FormRow():
-                    seed_resize_from_w = create_gr_elem(d.seed_resize_from_w)
-                    seed_resize_from_h = create_gr_elem(d.seed_resize_from_h)
+                    with gr.TabItem('🌱 Seed'):
+                        with FormRow():
+                            seed_behavior = create_gr_elem(d.seed_behavior)
+                        with FormRow() as seed_iter_N_row:
+                            seed_iter_N = create_gr_elem(d.seed_iter_N)
+                        with FormRow(visible=False) as seed_schedule_row:
+                            seed_schedule = create_gr_elem(da.seed_schedule)
+                    with gr.TabItem('➖ SubSeed', open=False) as subseed_sch_tab:
+                        with FormRow():
+                            enable_subseed_scheduling = create_gr_elem(da.enable_subseed_scheduling)
+                            subseed_schedule = create_gr_elem(da.subseed_schedule)
+                            subseed_strength_schedule = create_gr_elem(da.subseed_strength_schedule)
+                        with FormRow():
+                            seed_resize_from_w = create_gr_elem(d.seed_resize_from_w)
+                            seed_resize_from_h = create_gr_elem(d.seed_resize_from_h)
             # Steps Scheduling
-            with gr.TabItem('Step'):
+            with gr.TabItem('🪜 Step'):
                 with FormRow():
                     enable_steps_scheduling = create_gr_elem(da.enable_steps_scheduling)
                 with FormRow():
                     steps_schedule = create_gr_elem(da.steps_schedule)
             # Sampler Scheduling
-            with gr.TabItem('Sampler'):
+            with gr.TabItem('🔍 Sampler'):
                 with FormRow():
                     enable_sampler_scheduling = create_gr_elem(da.enable_sampler_scheduling)
                 with FormRow():
                     sampler_schedule = create_gr_elem(da.sampler_schedule)
             # Checkpoint Scheduling
-            with gr.TabItem('Checkpoint'):
+            with gr.TabItem('☑️ Checkpoint'):
                 with FormRow():
                     enable_checkpoint_scheduling = create_gr_elem(da.enable_checkpoint_scheduling)
                 with FormRow():
                     checkpoint_schedule = create_gr_elem(da.checkpoint_schedule)
         # MOTION INNER TAB
-        with gr.Tabs(elem_id='motion_noise_etc'):
-            with gr.TabItem('Motion') as motion_tab:
+        with gr.Tabs(elem_id='motion_tab'):
+            with gr.TabItem(label="🚀 Motion", elem_classes="deforum-motion-rocket-shake") as motion_tab:
+                gr.HTML(value=get_gradio_html('get_motion_tab_header_html'))
+                with FormColumn():
+                    with FormRow():
+                        animation_behavior = create_gr_elem(da.animation_behavior)
                 with FormColumn() as only_2d_motion_column:
                     with FormRow():
                         zoom = create_gr_elem(da.zoom)
@@ -160,7 +193,7 @@ def get_tab_keyframes(d, da, dloopArgs):
                     with FormRow():
                         rotation_3d_z = create_gr_elem(da.rotation_3d_z)
                 # PERSPECTIVE FLIP - inner params are hidden if not enabled
-                with FormRow() as enable_per_f_row:
+                with FormRow(elem_classes="section_top_border section_top_pad") as enable_per_f_row:
                     enable_perspective_flip = create_gr_elem(da.enable_perspective_flip)
                 with FormRow(visible=False) as per_f_th_row:
                     perspective_flip_theta = create_gr_elem(da.perspective_flip_theta)
@@ -170,8 +203,46 @@ def get_tab_keyframes(d, da, dloopArgs):
                     perspective_flip_gamma = create_gr_elem(da.perspective_flip_gamma)
                 with FormRow(visible=False) as per_f_f_row:
                     perspective_flip_fv = create_gr_elem(da.perspective_flip_fv)
+            # COHERENCE INNER TAB
+            with gr.TabItem('🎨 Coherence'):
+                with FormRow(scale=2):
+                    with FormColumn():
+                        with FormRow(scale=2):
+                            with FormColumn(visible=True, scale=1, min_width=180):
+                                with FormRow():
+                                    color_coherence = create_gr_elem(da.color_coherence)
+                                with FormRow():
+                                    color_coherence_behavior = create_gr_elem(da.color_coherence_behavior)
+                                with FormRow():
+                                    color_force_grayscale = create_gr_elem(da.color_force_grayscale)
+                                with FormRow():
+                                    color_coherence_in_cadence = create_gr_elem(da.color_coherence_in_cadence)
+                            with FormColumn(visible=True, scale=1):
+                                with FormRow():
+                                    color_coherence_source = create_gr_elem(da.color_coherence_source)
+                                with FormRow():
+                                    with FormColumn():
+                                        with FormRow():
+                                            color_coherence_image_path = create_gr_elem(da.color_coherence_image_path)
+                                        with FormRow():
+                                            color_coherence_video_path = create_gr_elem(da.color_coherence_video_path)
+                                        with FormRow():
+                                            color_coherence_video_from_to_nth = create_gr_elem(da.color_coherence_video_from_to_nth)
+                        with FormRow():
+                            color_coherence_alpha_schedule = create_gr_elem(da.color_coherence_alpha_schedule)
+                with FormRow(scale=2, elem_classes="section_top_border section_top_pad"):
+                    with FormColumn(min_width=180, elem_classes="section_right_border section_right_pad"):
+                        diffusion_redo = create_gr_elem(da.diffusion_redo)
+                    with FormColumn():
+                        updown_scale = create_gr_elem(da.updown_scale)
+                with FormRow(elem_classes="section_top_border section_top_pad"):
+                    with FormColumn(min_width=180, elem_classes="section_right_border section_right_pad"):
+                        contrast_schedule = create_gr_elem(da.contrast_schedule)
+                    with FormColumn():
+                        reroll_blank_frames = create_gr_elem(d.reroll_blank_frames)
+                        reroll_patience = create_gr_elem(d.reroll_patience)
             # NOISE INNER TAB
-            with gr.TabItem('Noise'):
+            with gr.TabItem('🏁 Noise'):
                 with FormColumn() as noise_tab_column:
                     with FormRow():
                         noise_type = create_gr_elem(da.noise_type)
@@ -185,42 +256,12 @@ def get_tab_keyframes(d, da, dloopArgs):
                             # following two params are INVISIBLE IN UI as of 21-05-23
                             perlin_w = create_gr_elem(da.perlin_w)
                             perlin_h = create_gr_elem(da.perlin_h)
-                    with FormRow():
-                        enable_noise_multiplier_scheduling = create_gr_elem(da.enable_noise_multiplier_scheduling)
-                    with FormRow():
-                        noise_multiplier_schedule = create_gr_elem(da.noise_multiplier_schedule)
-            # COHERENCE INNER TAB
-            with gr.TabItem('Coherence', open=False) as coherence_accord:
-                with FormRow():
-                    color_coherence = create_gr_elem(da.color_coherence)
-                    color_force_grayscale = create_gr_elem(da.color_force_grayscale)
-                with FormRow():
-                    legacy_colormatch = create_gr_elem(da.legacy_colormatch)
-                with FormRow(visible=False) as color_coherence_image_path_row:
-                    color_coherence_image_path = create_gr_elem(da.color_coherence_image_path)
-                with FormRow(visible=False) as color_coherence_video_every_N_frames_row:
-                    color_coherence_video_every_N_frames = create_gr_elem(da.color_coherence_video_every_N_frames)
-                with FormRow() as optical_flow_cadence_row:
-                    with FormColumn(min_width=220) as optical_flow_cadence_column:
-                        optical_flow_cadence = create_gr_elem(da.optical_flow_cadence)
-                    with FormColumn(min_width=220, visible=False) as cadence_flow_factor_schedule_column:
-                        cadence_flow_factor_schedule = create_gr_elem(da.cadence_flow_factor_schedule)
-                with FormRow():
-                    with FormColumn(min_width=220):
-                        optical_flow_redo_generation = create_gr_elem(da.optical_flow_redo_generation)
-                    with FormColumn(min_width=220, visible=False) as redo_flow_factor_schedule_column:
-                        redo_flow_factor_schedule = create_gr_elem(da.redo_flow_factor_schedule)
-                with FormRow():
-                    contrast_schedule = gr.Textbox(label="Contrast schedule", lines=1, value=da.contrast_schedule, interactive=True,
-                                                   info="adjusts the overall contrast per frame [neutral at 1.0, recommended to *not* play with this param]")
-                    diffusion_redo = gr.Slider(label="Redo generation", minimum=0, maximum=50, step=1, value=da.diffusion_redo, interactive=True,
-                                               info="this option renders N times before the final render. it is suggested to lower your steps if you up your redo. seed is randomized during redo generations and restored afterwards")
-                with FormRow():
-                    # what to do with blank frames (they may result from glitches or the NSFW filter being turned on): reroll with +1 seed, interrupt the animation generation, or do nothing
-                    reroll_blank_frames = create_gr_elem(d.reroll_blank_frames)
-                    reroll_patience = create_gr_elem(d.reroll_patience)
+                    with FormRow(elem_classes="section_top_border section_top_pad"):
+                        with FormColumn(min_width=220):
+                            enable_noise_multiplier_scheduling = create_gr_elem(da.enable_noise_multiplier_scheduling)
+                            noise_multiplier_schedule = create_gr_elem(da.noise_multiplier_schedule)
             # ANTI BLUR INNER TAB
-            with gr.TabItem('Anti Blur', elem_id='anti_blur_accord') as anti_blur_tab:
+            with gr.TabItem('🔎 Anti Blur', elem_id='anti_blur_accord') as anti_blur_tab:
                 with FormRow():
                     amount_schedule = create_gr_elem(da.amount_schedule)
                 with FormRow():
@@ -229,18 +270,20 @@ def get_tab_keyframes(d, da, dloopArgs):
                     sigma_schedule = create_gr_elem(da.sigma_schedule)
                 with FormRow():
                     threshold_schedule = create_gr_elem(da.threshold_schedule)
-            with gr.TabItem('Depth Warping & FOV', elem_id='depth_warp_fov_tab') as depth_warp_fov_tab:
+            with gr.TabItem('👀 Depth/FOV', visible=False, elem_id='depth_warp_fov_tab') as depth_warp_fov_tab:
                 # this html only shows when not in 2d/3d mode
                 depth_warp_msg_html = gr.HTML(value='Please switch to 3D animation mode to view this section.', elem_id='depth_warp_msg_html')
                 with FormRow(visible=False) as depth_warp_row_1:
                     use_depth_warping = create_gr_elem(da.use_depth_warping)
-                    # *the following html only shows when LeReS depth is selected*
-                    leres_license_msg = gr.HTML(value=get_gradio_html('leres'), visible=False, elem_id='leres_license_msg')
-                    depth_algorithm = create_gr_elem(da.depth_algorithm)
-                    midas_weight = create_gr_elem(da.midas_weight)
                 with FormRow(visible=False) as depth_warp_row_2:
-                    padding_mode = create_gr_elem(da.padding_mode)
-                    sampling_mode = create_gr_elem(da.sampling_mode)
+                    with FormColumn():
+                        depth_algorithm = create_gr_elem(da.depth_algorithm)
+                        # *the following html only shows when LeReS depth is selected*
+                        leres_license_msg = gr.HTML(value=get_gradio_html('leres'), visible=False, elem_id='leres_license_msg')
+                        # midas only shows when (old) depth models are used
+                        midas_weight = create_gr_elem(da.midas_weight)
+                    with FormColumn():
+                        sampling_mode = create_gr_elem(da.sampling_mode)
                 with FormRow(visible=False) as depth_warp_row_3:
                     aspect_ratio_use_old_formula = create_gr_elem(da.aspect_ratio_use_old_formula)
                 with FormRow(visible=False) as depth_warp_row_4:
@@ -251,11 +294,68 @@ def get_tab_keyframes(d, da, dloopArgs):
                     near_schedule = create_gr_elem(da.near_schedule)
                 with FormRow(visible=False) as depth_warp_row_7:
                     far_schedule = create_gr_elem(da.far_schedule)
+            # FlowToold INNER TAB
+            with gr.TabItem('🌊 FlowTools', visible=False) as flowtools_tab:
+                with FormRow() as temporal_flow_row:
+                    with FormColumn(min_width=220):
+                        with FormRow():
+                            with FormColumn(min_width=220):
+                                temporal_flow = create_gr_elem(da.temporal_flow)
+                                temporal_flow_target_frame_schedule = create_gr_elem(da.temporal_flow_target_frame_schedule)
+                                temporal_flow_return_target = create_gr_elem(da.temporal_flow_return_target)
+                                temporal_flow_cadence_behavior = create_gr_elem(da.temporal_flow_cadence_behavior)
+                            with FormColumn(min_width=220):
+                                temporal_flow_factor_schedule = create_gr_elem(da.temporal_flow_factor_schedule)
+                                temporal_flow_motion_stabilizer_factor_schedule = create_gr_elem(da.temporal_flow_motion_stabilizer_factor_schedule)
+                                temporal_flow_rotation_stabilizer_factor_schedule = create_gr_elem(da.temporal_flow_rotation_stabilizer_factor_schedule)
+                with FormRow(elem_classes="section_top_border section_top_pad") as morpho_row:
+                    with FormColumn(min_width=220):
+                        with FormRow(scale=2,visible=False) as morpho_help_wrapper:
+                            with gr.Accordion('🤔 Morphological Transformation Help', open=False):
+                                gr.HTML(value=get_gradio_html('morpho'))
+                        with FormRow(scale=2):
+                            with FormColumn(min_width=220):
+                                with FormRow():
+                                    morpho_flow = create_gr_elem(da.morpho_flow)
+                                with FormRow():
+                                    morpho_cadence_behavior = create_gr_elem(da.morpho_cadence_behavior)
+                                with FormRow():
+                                    morpho_image_type = create_gr_elem(da.morpho_image_type)
+                                with FormRow():
+                                    morpho_bitmap_threshold = create_gr_elem(da.morpho_bitmap_threshold)
+                            with FormColumn(min_width=220):
+                                with FormRow():                        
+                                    morpho_flow_factor_schedule = create_gr_elem(da.morpho_flow_factor_schedule)
+                                with FormRow():
+                                    morpho_iterations_schedule = create_gr_elem(da.morpho_iterations_schedule)
+                                with FormRow():
+                                    morpho_schedule = create_gr_elem(da.morpho_schedule)
+                with FormRow(elem_classes="section_top_border section_top_pad") as optical_flow_generation_row:
+                    with FormColumn(min_width=220):
+                        optical_flow_redo_generation = create_gr_elem(da.optical_flow_redo_generation)
+                    with FormColumn(min_width=220):
+                        redo_flow_factor_schedule = create_gr_elem(da.redo_flow_factor_schedule)
+            # Loop Comp INNER TAB
+            with gr.TabItem('♻️ Loop'):
+                with FormRow(scale=2):
+                    with FormColumn():
+                        with FormRow(scale=2):
+                            with gr.Accordion('♻️ Loop Compositing Help', open=False, visible=True):
+                                gr.HTML(value=get_gradio_html('loop_comp_help'))
+                        with FormRow(scale=2):
+                            loop_comp_type_schedule = create_gr_elem(da.loop_comp_type_schedule)
+                            loop_comp_alpha_schedule = create_gr_elem(da.loop_comp_alpha_schedule)
+                        with FormRow(scale=2):
+                            loop_comp_conform_method = create_gr_elem(da.loop_comp_conform_method)
+                            loop_comp_conform_schedule = create_gr_elem(da.loop_comp_conform_schedule)
+                        with FormRow(scale=2):
+                            loop_comp_order = create_gr_elem(da.loop_comp_order)
+                            loop_comp_conform_iterations = create_gr_elem(da.loop_comp_conform_iterations)
 
     return {k: v for k, v in {**locals(), **vars()}.items()}
 
 def get_tab_prompts(da):
-    with gr.TabItem('Prompts'):
+    with gr.TabItem('💬 Prompts'):
         # PROMPTS INFO ACCORD
         with gr.Accordion(label='*Important* notes on Prompts', elem_id='prompts_info_accord', open=False) as prompts_info_accord:
             gr.HTML(value=get_gradio_html('prompts'))
@@ -280,9 +380,9 @@ def get_tab_prompts(da):
     return {k: v for k, v in {**locals(), **vars()}.items()}
 
 def get_tab_init(d, da, dp):
-    with gr.TabItem('Init'):
+    with gr.TabItem('💼 Init'):
         # IMAGE INIT INNER-TAB
-        with gr.Tab('Image Init'):
+        with gr.Tab('🖼️ Image Init'):
             with FormRow():
                 with gr.Column(min_width=150):
                     use_init = create_gr_elem(d.use_init)
@@ -293,7 +393,7 @@ def get_tab_init(d, da, dp):
             with FormRow():
                 init_image = create_gr_elem(d.init_image)
         # VIDEO INIT INNER-TAB
-        with gr.Tab('Video Init'):
+        with gr.Tab('📺 Video Init'):
             with FormRow():
                 video_init_path = create_gr_elem(da.video_init_path)
             with FormRow():
@@ -305,7 +405,7 @@ def get_tab_init(d, da, dp):
             with FormRow():
                 video_mask_path = create_gr_elem(da.video_mask_path)
         # MASK INIT INNER-TAB
-        with gr.Tab('Mask Init'):
+        with gr.Tab('🎭 Mask Init'):
             with FormRow():
                 use_mask = create_gr_elem(d.use_mask)
                 use_alpha_as_mask = create_gr_elem(d.use_alpha_as_mask)
@@ -326,7 +426,7 @@ def get_tab_init(d, da, dp):
                 with FormColumn(min_width=250):
                     mask_brightness_adjust = create_gr_elem(d.mask_brightness_adjust)
         # PARSEQ ACCORD
-        with gr.Accordion('Parseq', open=False):
+        with gr.Accordion('💫 Parseq', open=False):
             gr.HTML(value=get_gradio_html('parseq'))
             with FormRow():
                 parseq_manifest = create_gr_elem(dp.parseq_manifest)
@@ -335,70 +435,103 @@ def get_tab_init(d, da, dp):
     return {k: v for k, v in {**locals(), **vars()}.items()}
 
 def get_tab_hybrid(da):
-    with gr.TabItem('Hybrid Video'):
+    with gr.TabItem('👾 Hybrid Video') as hybrid_video_tab:
         # this html only shows when not in 2d/3d mode
         hybrid_msg_html = gr.HTML(value='Please, change animation mode to 2D or 3D to enable Hybrid Mode', visible=False, elem_id='hybrid_msg_html')
-        # HYBRID INFO ACCORD
-        with gr.Accordion("Info & Help", open=False):
-            gr.HTML(value=get_gradio_html('hybrid_video'))
-        # HYBRID SETTINGS ACCORD
-        with gr.Accordion("Hybrid Settings", open=True) as hybrid_settings_accord:
-            with FormRow():
-                hybrid_composite = gr.Radio(['None', 'Normal', 'Before Motion', 'After Generation'], label="Hybrid composite", value=da.hybrid_composite, elem_id="hybrid_composite")
-            with FormRow():
-                with FormColumn(min_width=340):
-                    with FormRow():
-                        hybrid_generate_inputframes = create_gr_elem(da.hybrid_generate_inputframes)
+        with FormColumn() as hybrid_video_compositing_section:
+            # HYBRID INFO ACCORD
+            with gr.Accordion("🎯 Info & Help", open=False):
+                gr.HTML(value=get_gradio_html('hybrid_video'))
+            with FormRow(elem_classes="section_bottom_border_pad"):
+                hybrid_generate_inputframes = create_gr_elem(da.hybrid_generate_inputframes)
+                hybrid_comp_save_extra_frames = create_gr_elem(da.hybrid_comp_save_extra_frames)
+                reallybigname_css_btn = create_gr_elem(da.reallybigname_css_btn)
+            with gr.TabItem('📺 Hybrid Compositing') as hybrid_compositing_tab:
+                with FormRow():
+                    hybrid_composite = create_gr_elem(da.hybrid_composite)
+                with FormRow():
+                    with FormColumn():
                         hybrid_use_first_frame_as_init_image = create_gr_elem(da.hybrid_use_first_frame_as_init_image)
+                    with FormColumn():
                         hybrid_use_init_image = create_gr_elem(da.hybrid_use_init_image)
-            with FormRow():
-                with FormColumn():
-                    with FormRow():
-                        hybrid_motion = create_gr_elem(da.hybrid_motion)
-                with FormColumn():
-                    with FormRow():
-                        with FormColumn(scale=1):
-                            hybrid_flow_method = create_gr_elem(da.hybrid_flow_method)
-                    with FormRow():
-                        with FormColumn():
-                            hybrid_flow_consistency = create_gr_elem(da.hybrid_flow_consistency)
-                            hybrid_consistency_blur = create_gr_elem(da.hybrid_consistency_blur)
-                        with FormColumn():
-                            hybrid_motion_use_prev_img = create_gr_elem(da.hybrid_motion_use_prev_img)
-            with FormRow():
-                hybrid_comp_mask_type = create_gr_elem(da.hybrid_comp_mask_type)
-            with gr.Row(visible=False, variant='compact') as hybrid_comp_mask_row:
-                hybrid_comp_mask_equalize = create_gr_elem(da.hybrid_comp_mask_equalize)
-                with FormColumn():
-                    hybrid_comp_mask_auto_contrast = gr.Checkbox(label="Comp mask auto contrast", value=False, interactive=True)
-                    hybrid_comp_mask_inverse = gr.Checkbox(label="Comp mask inverse", value=da.hybrid_comp_mask_inverse, interactive=True)
-            with FormRow():
-                hybrid_comp_save_extra_frames = gr.Checkbox(label="Comp save extra frames", value=False, interactive=True)
-        # HYBRID SCHEDULES ACCORD
-        with gr.Accordion("Hybrid Schedules", open=False, visible=False) as hybrid_sch_accord:
-            with FormRow() as hybrid_comp_alpha_schedule_row:
-                hybrid_comp_alpha_schedule = create_gr_elem(da.hybrid_comp_alpha_schedule)
-            with FormRow() as hybrid_flow_factor_schedule_row:
-                hybrid_flow_factor_schedule = create_gr_elem(da.hybrid_flow_factor_schedule)
-            with FormRow(visible=False) as hybrid_comp_mask_blend_alpha_schedule_row:
-                hybrid_comp_mask_blend_alpha_schedule = create_gr_elem(da.hybrid_comp_mask_blend_alpha_schedule)
-            with FormRow(visible=False) as hybrid_comp_mask_contrast_schedule_row:
-                hybrid_comp_mask_contrast_schedule = create_gr_elem(da.hybrid_comp_mask_contrast_schedule)
-            with FormRow(visible=False) as hybrid_comp_mask_auto_contrast_cutoff_high_schedule_row:
-                hybrid_comp_mask_auto_contrast_cutoff_high_schedule = create_gr_elem(da.hybrid_comp_mask_auto_contrast_cutoff_high_schedule)
-            with FormRow(visible=False) as hybrid_comp_mask_auto_contrast_cutoff_low_schedule_row:
-                hybrid_comp_mask_auto_contrast_cutoff_low_schedule = create_gr_elem(da.hybrid_comp_mask_auto_contrast_cutoff_low_schedule)
-        # HUMANS MASKING ACCORD
-        with gr.Accordion("Humans Masking", open=False, visible=False) as humans_masking_accord:
-            with FormRow():
-                hybrid_generate_human_masks = create_gr_elem(da.hybrid_generate_human_masks)
+                with FormRow():
+                    with FormColumn():
+                        hybrid_comp_conform_method = create_gr_elem(da.hybrid_comp_conform_method)
+                    with FormColumn():
+                        hybrid_comp_conform_iterations = create_gr_elem(da.hybrid_comp_conform_iterations)
+                with FormRow():
+                    with FormColumn():
+                        hybrid_comp_conform_schedule = create_gr_elem(da.hybrid_comp_conform_schedule)
+                with FormRow():
+                    hybrid_comp_type = create_gr_elem(da.hybrid_comp_type)
+                with FormRow():
+                    hybrid_comp_alpha_schedule = create_gr_elem(da.hybrid_comp_alpha_schedule)
+                with FormRow(elem_classes="section_top_border", visible=False) as hybrid_comp_msg_row:
+                    gr.HTML(value=get_gradio_html('hybrid_comp_msg'))
+                with FormRow():
+                    hybrid_comp_mask_type = create_gr_elem(da.hybrid_comp_mask_type)
+                with FormRow():
+                    with FormColumn():
+                        hybrid_comp_mask_equalize = create_gr_elem(da.hybrid_comp_mask_equalize)
+                    with FormColumn():
+                        hybrid_comp_mask_auto_contrast = create_gr_elem(da.hybrid_comp_mask_auto_contrast)
+                        hybrid_comp_mask_inverse = create_gr_elem(da.hybrid_comp_mask_inverse)
+                        hybrid_comp_mask_do_overlay_mask = create_gr_elem(da.hybrid_comp_mask_do_overlay_mask)
+                with FormRow() as hybrid_comp_mask_schedule_rows:
+                    with FormColumn():
+                        with FormRow():
+                            hybrid_comp_mask_alpha_schedule = create_gr_elem(da.hybrid_comp_mask_alpha_schedule)
+                        with FormRow():
+                            hybrid_comp_mask_contrast_schedule = create_gr_elem(da.hybrid_comp_mask_contrast_schedule)
+                        with FormRow():
+                            hybrid_comp_mask_auto_contrast_cutoff_high_schedule = create_gr_elem(da.hybrid_comp_mask_auto_contrast_cutoff_high_schedule)
+                        with FormRow():
+                            hybrid_comp_mask_auto_contrast_cutoff_low_schedule = create_gr_elem(da.hybrid_comp_mask_auto_contrast_cutoff_low_schedule)
+            with gr.TabItem('🏄‍♂️ Hybrid Motion') as hybrid_motion_tab:
+                with FormRow():
+                    with FormColumn():
+                        with FormRow():
+                            hybrid_motion = create_gr_elem(da.hybrid_motion)
+                        with FormRow():
+                            hybrid_motion_behavior = create_gr_elem(da.hybrid_motion_behavior)
+                    with FormColumn():
+                        with FormRow():
+                            with FormColumn():
+                                hybrid_flow_method = create_gr_elem(da.hybrid_flow_method)
+                        with FormRow():
+                            with FormColumn():
+                                hybrid_flow_consistency = create_gr_elem(da.hybrid_flow_consistency)
+                                hybrid_consistency_blur = create_gr_elem(da.hybrid_consistency_blur)
+                            with FormColumn():
+                                hybrid_motion_use_prev_img = create_gr_elem(da.hybrid_motion_use_prev_img)
+                with FormRow():
+                    with FormColumn():
+                        with FormRow():
+                            hybrid_flow_factor_schedule = create_gr_elem(da.hybrid_flow_factor_schedule)
+                # with FormRow(visible=False) as hybrid_motion_flow_amounts_row:
+                #     with FormColumn():
+                #         with FormRow():
+                #             with FormColumn(scale=2,min_width=240):
+                #                 gr.HTML(value="Mix optical flow from multiple sources with weight 0-1 | <b>if over 0, needs valid path!</b>")
+                #         with FormRow():
+                #             with FormColumn(scale=1):
+                #                 hybrid_video_init_flow_amount = create_gr_elem(da.hybrid_video_init_flow_amount)
+                #                 hybrid_cn1_flow_amount = create_gr_elem(da.hybrid_cn1_flow_amount)
+                #                 hybrid_cn2_flow_amount = create_gr_elem(da.hybrid_cn2_flow_amount)
+                #             with FormColumn(scale=1):
+                #                 hybrid_cn3_flow_amount = create_gr_elem(da.hybrid_cn3_flow_amount)
+                #                 hybrid_cn4_flow_amount = create_gr_elem(da.hybrid_cn4_flow_amount)
+                #                 hybrid_cn5_flow_amount = create_gr_elem(da.hybrid_cn5_flow_amount)
+            with gr.TabItem('😷 Humans Masking'):
+                with FormRow() as humans_masking_row:
+                    hybrid_generate_human_masks = create_gr_elem(da.hybrid_generate_human_masks)
 
     return {k: v for k, v in {**locals(), **vars()}.items()}
 
 def get_tab_output(da, dv):
-    with gr.TabItem('Output', elem_id='output_tab'):
+    with gr.TabItem('🤌 Output', elem_id='output_tab'):
         # VID OUTPUT ACCORD
-        with gr.Accordion('Video Output Settings', open=True):
+        with gr.Accordion('📺 Video Output Settings', open=True):
             with FormRow() as fps_out_format_row:
                 fps = create_gr_elem(dv.fps)
             with FormColumn():
@@ -417,8 +550,8 @@ def get_tab_output(da, dv):
                 r_upscale_factor = create_gr_elem(dv.r_upscale_factor)
                 r_upscale_keep_imgs = create_gr_elem(dv.r_upscale_keep_imgs)
         # FRAME INTERPOLATION TAB
-        with gr.Tab('Frame Interpolation') as frame_interp_tab:
-            with gr.Accordion('Important notes and Help', open=False, elem_id="f_interp_accord"):
+        with gr.Tab('🎞️ Frame Interpolation') as frame_interp_tab:
+            with gr.Accordion('🎯 Important notes and Help', open=False, elem_id="f_interp_accord"):
                 gr.HTML(value=get_gradio_html('frame_interpolation'))
             with gr.Column():
                 with gr.Row():
@@ -470,7 +603,7 @@ def get_tab_output(da, dv):
                                                       inputs=[pics_to_interpolate_chosen_file, frame_interpolation_engine, frame_interpolation_x_amount, frame_interpolation_slow_mo_enabled,
                                                               frame_interpolation_slow_mo_amount, frame_interpolation_keep_imgs, fps, add_soundtrack, soundtrack_path])
         # VIDEO UPSCALE TAB - not built using our args.py at all - all data and params are here and in .upscaling file
-        with gr.TabItem('Video Upscaling'):
+        with gr.TabItem('⬆️ Video Upscaling'):
             vid_to_upscale_chosen_file = gr.File(label="Video to Upscale", interactive=True, file_count="single", file_types=["video"], elem_id="vid_to_upscale_chosen_file")
             with gr.Column():
                 # NCNN UPSCALE TAB
@@ -490,7 +623,7 @@ def get_tab_output(da, dv):
                                        inputs=[vid_to_upscale_chosen_file, ncnn_upscale_in_vid_fps_ui_window, ncnn_upscale_in_vid_res, ncnn_upscale_out_vid_res, ncnn_upscale_model,
                                                ncnn_upscale_factor, ncnn_upscale_keep_imgs])
         # Vid2Depth TAB - not built using our args.py at all - all data and params are here and in .vid2depth file
-        with gr.TabItem('Vid2depth'):
+        with gr.TabItem('🕋 Vid2depth'):
             vid_to_depth_chosen_file = gr.File(label="Video to get Depth from", interactive=True, file_count="single", file_types=["video"], elem_id="vid_to_depth_chosen_file")
             with FormRow():
                 mode = gr.Dropdown(label='Mode', elem_id="mode", choices=['Depth (Midas/Adabins)', 'Anime Remove Background', 'Mixed', 'None (just grayscale)'], value='Depth (Midas/Adabins)')
@@ -517,11 +650,17 @@ def get_tab_output(da, dv):
             depth_btn.click(fn=upload_vid_to_depth,
                             inputs=[vid_to_depth_chosen_file, mode, thresholding, threshold_value, threshold_value_max, adapt_block_size, adapt_c, invert, end_blur, midas_weight_vid2depth, depth_keep_imgs])
         # STITCH FRAMES TO VID TAB
-        with gr.TabItem('Frames to Video') as stitch_imgs_to_vid_row:
+        with gr.TabItem('🪟 Frames to Video') as stitch_imgs_to_vid_row:
             gr.HTML(value=get_gradio_html('frames_to_video'))
             with FormRow():
                 image_path = create_gr_elem(dv.image_path)
             ffmpeg_stitch_imgs_but = gr.Button(value="*Stitch frames to video*")
             ffmpeg_stitch_imgs_but.click(fn=direct_stitch_vid_from_frames, inputs=[image_path, fps, add_soundtrack, soundtrack_path])
 
+        # reallybigvideo
+        # with gr.TabItem('🧙‍♂️ reallybigvideo') as reallybigvideo_tab:
+        #     rbv_chosen_file = gr.File(label="Video to process", interactive=True, file_count="single", file_types=["video"], elem_id="reallybigvid_chosen_file")
+        #     rbv_process_btn = gr.Button(value="Process video")
+        #     rbv_process_btn.click(fn=rbv_upload_vid, inputs=[rbv_chosen_file])
+                
     return {k: v for k, v in {**locals(), **vars()}.items()}

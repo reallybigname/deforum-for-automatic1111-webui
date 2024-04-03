@@ -3,6 +3,9 @@ matplotlib
 pandas
 av
 pims
+imageio
 imageio_ffmpeg
 rich
 gdown
+color_matcher
+opencv-contrib-python

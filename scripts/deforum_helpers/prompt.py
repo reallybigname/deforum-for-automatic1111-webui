@@ -116,7 +116,7 @@ def interpolate_prompts(animation_prompts, max_frames):
     return prompt_series.ffill().bfill()
 
 def prepare_prompt(prompt_series, max_frames, seed, frame_idx):
-    max_f = max_frames - 1
+    max_f = max_frames + 1
     pattern = r'`.*?`'
     regex = re.compile(pattern)
     prompt_parsed = prompt_series

@@ -1,0 +1,171 @@
+#tab_deforum_interface .mix-in-help-cursor {
+  cursor: help;
+}
+#tab_deforum_interface span.has-info:hover {
+  text-shadow: #ffcd60 0px 0px 5px !important;
+  cursor: help;
+}
+#tab_deforum_interface label:has(span):hover {
+  cursor: help;
+}
+#tab_deforum_interface .block.gradio-checkbox {
+  margin-top: 0em !important;
+}
+#tab_deforum_interface .tab-nav button {
+  font-size: 15pt !important;
+  padding: 2px 8px 0 8px !important;
+  font-family: 'Source Sans Pro Narrow', 'ui-sans-serif', 'system-ui', sans-serif;
+  font-variant: ordinal;
+}
+#tab_deforum_interface .tab-nav button.selected {
+  font-size: 17pt !important;
+}
+#tab_deforum_interface .selected {
+  background: var(--background-fill-primary);
+}
+#tab_deforum_interface .gradio-radio .wrap label {
+  padding: 8px !important;
+}
+#tab_deforum_interface .block *:not(input, textarea, .tab-nav, .gradio-accordion .tab-nav *, .tab-nav *) {
+  font-family: 'Source Sans Pro Narrow', 'ui-sans-serif', 'system-ui', sans-serif !important;
+  letter-spacing: -0.03rem !important;
+  font-size: 0.85rem !important;
+  font-weight: bolder !important;
+}
+#tab_deforum_interface .block label .gradio-accordion div.label-wrap span {
+  font-size: 10pt !important;
+}
+#tab_deforum_interface .block label div.svelte-e8n7p6 {
+  font-size: 12px;
+}
+#tab_deforum_interface div > div.tab-nav > button:not(.selected):hover {
+  animation: defanim-flip-x 1s linear 1, defanim-flip-x 0.5s linear 3, defanim-flip-x 250ms linear 6, defanim-flip-x 125ms linear 12, defanim-flip-x-rise 0.5s linear 1, defanim-flip-x-grow 2s linear 1;
+  animation-delay: 3s, 4s, 5.5s, 7s, 8.5s, 9s !important;
+}
+#tab_deforum_interface div > div.tab-nav > button.selected {
+  animation: defanim-glow-hold 5s infinite ease-in-out !important;
+}
+#tab_deforum_interface #motion_tab > div.tab-nav > button:first-child:hover {
+  animation: defanim-rocket-shake 200ms ease-in-out 10, defanim-rocket-shake 500ms ease-in-out alternate-reverse 10, defanim-rocket-shake-launch 10s ease-in-out 1 !important;
+  animation-delay: 2s, 7s, 9.5s !important;
+  animation-fill-mode: none !important;
+  animation-play-state: running !important;
+}
+#tab_deforum_interface #motion_tab > div.tab-nav > button:first-child:not(:hover).selected {
+  animation: defanim-rocket-shake-glow-hold 15s ease-in-out infinite !important;
+}
+@keyframes defanim-glow-hold {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
+  }
+  80% {
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
+  }
+  90% {
+    box-shadow: 0 -1px 0 1px rgba(255, 255, 255, 0.4);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
+  }
+}
+@keyframes defanim-flip-x {
+  0% {
+    transform: rotate3d(0, 1, 0.1, 0deg);
+  }
+  100% {
+    transform: rotate3d(0, 1, 0.1, 360deg);
+  }
+}
+@keyframes defanim-flip-x-rise {
+  0% {
+    transform: rotate3d(0, 1, 0.1, 0deg) translate(0, 0);
+  }
+  25% {
+    transform: rotate3d(0, 1, 0.1, 180deg) translate(0, -10px);
+  }
+  50% {
+    transform: rotate3d(0, 1, 0.1, 360deg) translate(0, -30px);
+  }
+  75% {
+    transform: rotate3d(0, 1, 0.1, 540deg) translate(0, -20px);
+  }
+  100% {
+    transform: rotate3d(0, 1, 0.1, 720deg) translate(0, -40px);
+  }
+}
+@keyframes defanim-flip-x-grow {
+  0% {
+    transform: translate(0, -40px) scale(1) rotate3d(0, 1, 0.1, 0deg);
+  }
+  25% {
+    transform: translate(20px, -20px) scale(2) rotate3d(0, 1, 0.1, 360deg);
+  }
+  50% {
+    transform: translate(-20px, -80px) scale(4) rotate3d(0, 1, 0.1, 720deg);
+  }
+  75% {
+    transform: translate(0, -20px) scale(2) rotate3d(0, 1, 0.1, 1080deg);
+  }
+  100% {
+    transform: translate(0, 0px) scale(1) rotate3d(0, 1, 0.1, 1440deg);
+  }
+}
+@keyframes defanim-rocket-shake-glow-hold {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
+  }
+  80% {
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
+  }
+  90% {
+    box-shadow: 0 -1px 0 1px rgba(255, 255, 255, 0.4);
+  }
+  91% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  92% {
+    transform: translate(1px, 2px) rotate(2deg);
+  }
+  93% {
+    transform: translate(-1px, -1px) rotate(-3deg);
+  }
+  94% {
+    transform: translate(1px, 1px) rotate(1deg);
+  }
+  95% {
+    transform: translate(1px, -2px) rotate(-2deg);
+  }
+  96% {
+    transform: translate(-1px, -3px) rotate(-5deg);
+  }
+  97% {
+    transform: translate(0px, -1px) rotate(-1deg);
+  }
+  99% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
+  }
+}
+@keyframes defanim-rocket-shake-launch {
+  0% {
+    transform: translate(0, 0) rotate(0deg);
+    background-color: rgba(0, 0, 0, 0);
+    border-color: rgba(0, 0, 0, 0);
+  }
+  10% {
+    transform: translate(0, -20px) rotate(-45deg);
+  }
+  50% {
+    transform: translate(0, -600px) rotate(135deg);
+  }
+  90% {
+    transform: translate(0, -20px) rotate(315deg);
+  }
+  100% {
+    transform: translate(0, 0) rotate(360deg);
+    background-color: rgba(0, 0, 0, 0);
+    border-color: rgba(0, 0, 0, 0);
+  }
+}
