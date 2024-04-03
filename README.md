@@ -1,5 +1,6 @@
 
 # Deforum Stable Diffusion — official extension for AUTOMATIC1111's webui
+# <b style='color:red;'>reallybigname's experimental version</b>
 
 <p align="left">
     <a href="https://github.com/deforum-art/sd-webui-deforum/commits"><img alt="Last Commit" src="https://img.shields.io/github/last-commit/deforum-art/deforum-for-automatic1111-webui"></a>
