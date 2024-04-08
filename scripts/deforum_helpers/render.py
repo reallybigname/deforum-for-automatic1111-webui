@@ -143,12 +143,14 @@ def render_animation(args, anim_args, video_args, parseq_args, loop_args, contro
             cc_vid_folder, cc_vid_path = extract_video_init_without_hybrid(args.outdir, anim_args, inputframes_path)
         
         # for debugging color coherence: set to True to save the pixel-mixed image & sample frames to see if the cc alpha is working properly 
-        save_cc_mix = True
+        save_cc_mix = False
         if save_cc_mix:
             cc_mix_outdir = os.path.join(args.outdir, "ccmixed")
             print(f"Saving color coherence mixed sample frames to:\n{cc_mix_outdir}")
             if not os.path.exists(cc_mix_outdir):
                 os.makedirs(cc_mix_outdir)
+        else:
+            cc_mix_outdir = None
 
         # auto-extract in the case that cc source is custom 'Video Path' (could also have a video init)
         if anim_args.color_coherence_source == 'Video Path':

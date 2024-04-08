@@ -1,5 +1,4 @@
 import cv2
-import numpy as np
 import re
 from tqdm import tqdm
 from .hybrid_flow import image_transform_optical_flow, get_flow_from_images, remap_flow, combine_flow_fields
