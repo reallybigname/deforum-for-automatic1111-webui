@@ -1,5 +1,5 @@
 
-# <div style="text-shadow:red 1px 1px 10px;"><b><span style='color:red;opacity:0.5;font-size:1.25em;'>D</span><span style="position:absolute;left:5px;top:7px;color:gold;z-index:10;">R</span>eforum</b> - <em style="font-size:0.75em;"><span style="color:gold;">r</span>eallybigname deforum <span style="font-size:0.6em;">(experimental branch)</span></em></div>
+# Reforum - reallybigname deforum (experimental branch)
 
 #### I started this branch in like June of 2023 and it became very different over time. I just finally released it to the public and it's now April 2024. See, I used it as my experimental playground, and didn't limit myself as I would have with the main branch. I wanted to change some things fundamentally and experiment. There's a lot on the back end that are invisible, but I'll try to start documenting the major front-end changes and features here:
 
@@ -38,7 +38,7 @@
 ### Be sure to check '**Show more info**' (top of UI) for help
 - **Expandable help is also provided for some features**. 
 
-### Below is the original content before my branch:
+### Below is the original readme before my branch:
 <hr />
 
 # Deforum Stable Diffusion — official extension for AUTOMATIC1111's webui
