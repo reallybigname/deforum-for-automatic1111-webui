@@ -1,6 +1,47 @@
 
+# <div style="text-shadow:red 1px 1px 10px;"><b><span style='color:red;opacity:0.5;font-size:1.25em;'>D</span><span style="position:absolute;left:5px;top:7px;color:gold;z-index:10;">R</span>eforum</b> - <em style="font-size:0.75em;"><span style="color:gold;">r</span>eallybigname deforum <span style="font-size:0.6em;">(experimental branch)</span></em></div>
+
+#### I started this branch in like June of 2023 and it became very different over time. I just finally released it to the public and it's now April 2024. See, I used it as my experimental playground, and didn't limit myself as I would have with the main branch. I wanted to change some things fundamentally and experiment. There's a lot on the back end that are invisible, but I'll try to start documenting the major front-end changes and features here:
+
+- **Cadence**
+  - **Cadence easing schedule** - allows more slideshow-like cadence runs, and other timing effects.
+  - **Cadence flow easing schedule** - changes easing of the flow within the eased cadence frames. You can mix and match the cadence easing and cadence flow easing schedules for different effects, although I usually align them.
+  - **Cadence flow warp factor schedule** - cadence flow has been further enhanced, and also now has a warp factor schedule which determines the amount that the next image is warped towards the previous image at the start of cadence. Warp factors may even be mixed, with weighting.
+  - **Cadence behavior now always dual image** - It no longer starts with the same image it finishes with on the first cycle of cadence. I store frames in a history until two are available, and made it so that cadence is always provided with two images.
+  - **Cadence fundamentally changed** - Old cadence all happened in one loop. My cadence routines each loop over a cadence object which stores all prev/next 'turbo' frames. Each function does what it needs and passes it on, and only at the very end of the cadence cycle does it mix the prev and next images for the final result. This can be slower at times, but also offers a much smoother cadence flow as well as allowing for various processes during cadence without them all interfering with each other.  
+- **Temporal flow** is a new feature which gets the flow from a previous frame to the current frame and applies the flow to the current frame with a flow factor schedule. You can change the frame it targets with a schedule as well. And, it has some optional behaviors inside of cadence frames: Forward or Bounce.
+- **Morphological transformations** are a new feature using cv2.morphologyEx function. I get the flow from the current frame to a temporary morph'd frame, and apply that flow with a flow factor schedule. With 7 possible operations using 11 possible kernels, there are a lot of combinations, and there is an iteration schedule for the function. It also has modes that control how the function operates behind the scenes, as grayscale, 3-color, or just a bitmap. Bitmap has further low/high cutoff control schedules. I also added a direct mode that doesn't use flow, and simply returns the direct result of the transform, even if it's in grayscale or bitmap. This was for testing originally, but you can do some cool things with that as well.
+- **Color coherence enhancements**:
+  - **Separated Color coherence type and Color coherence source in UI**. *(Video color matching was previously always done with LAB behind the scenes. Now any color match can be used with any source)*
+  - **Color coherence sources** can be *First Frame, Image Path, Video Init, or Video Path*
+    - *Video path* is a custom path for a color match video only (can be different than video init)
+    - compact textbox designation for "<b>from|to|increment</b>" (ie. "<b>0|-1|1</b>")
+  - **Added HahneC color-matcher** types to color coherence, some are reliable even if only applied After generation
+  - **Added color coherence alpha schedule** - Allows you to alter the amount of color coherence to the selected source. You can make it 0.01 so it slowly picks up the colors, or you can make it 0.9 if you want to give the color pallette just a little bit of wiggle room. Behind the scenes it mixes the current image with the color coherence sample and uses the mix for that frame. But, to prevent the actual colors from being blended, I mix the two images with a special per-pixel function, swapping rather than blending any. 
+- **Loop compositing** - All new feature which changes a fundamental part of how Deforum can work.   
+  - **Mix prev_imgs** - Normally, the current image becomes the previous image on the next cycle. Instead of just doing the swap, I add the ability to mix the old previous image with the new previous image, with an alpha schedule, as well as options to use a bunch of layer compositing functions like multiply, luma darken only, screen, difference, just to name a few. And, you can flip flop the order of the two images for the composite.
+  - **Loop conform flow alignment schedule** - Unless you want blurriness, it's no good to composite two images unless they are aligned, right? Well, that's where the optional '**conform**' comes in. It allows you to attempt to make the image conform to the new image's shape before compositing. using optical flow, and optional iterations. But, it doesn't just try to align the old image with the new. Valid schedule values are between 0 and 1 with 0 being the old and 1 being the new. For instance:
+    - At 0, it tries to align the new frame with the old frame's shape.
+    - At 1, it tries to align the old frame with the new frame's shape.
+    - At 0.5, it tries to aligns both images half-way towards each other's shape.
+- **Hybrid compositing** - Added the same layer compositing functions seen in 'Loop compositing' above as options for hybrid compositing. So, the conform function allows you to do a lot of video motion stuff without using the hybrid motion section at all, unless you want to. Rather than copying the motion from two frames in the video and applying the motion to the rendering, this just tries to force the current frame to conform with the current frame of video. Simple, yet very powerful. Amazingly, I suggest 1 iteration and Farneback flow for consistency. Also, you can use it during cadence, even some long cadence can hold together with fast motion. 
+- **Hybrid motion:**
+  - Added option **After Generation** - can be very useful in certain situations where it's paying more attention to ControlNet weights than strength and init image. 
+  - Added **new experimental Matrix Flow** - Still working on it, but the idea with Matrix Flow is that it doesn't just use a matrix for camera motion and it doesn't just use optical flow for motion in the scene, and instead uses both. However, unlike my other Perspective and Affine RANSAC camera tracking modes, Matrix Flow actually hooks right into the same functions that make the 2D or 3D animation keyframing work. I also use optical flow, cancelling out the other motion from the matrix transformation. The promise of Matrix Flow if it worked nicely is that 3D objects from a video could also take advantage of the depth routines of 3D animation keyframing, aligning the animation maths with the world in the video. But, there are challenges in this approach, namely that there is no reliable way to estimate z_translation and fov nicely from a video source. But, I do have it partially working. More experimentation needed. I can't guarantee it works with all other features, as it is experimental.
+- **Fixed Resume from timestring**. Can delete any number of frames going backwards and resume. Works flawlessly on everything except certain temporal flow cases, which I still need to account for.
+- **Added fancy icons** next to all section titles
+- **Customized CSS** - converted to less.css behind the scenes
+- **Optional CSS Button** located on the Hybrid Video tab enables some different fonts, styles, and animations, *including tabs that spin and take off like helicopters if you hover for a bit*... Or the rocket icon 🚀 for the Motion tab that *actually takes off then comes back and lands*. Or, *active tabs that periodically glow a little*.
+
+- ***<span style="color:yellow;text-shadow:black -1px -1px 2px">I'm sure there's more new stuff, but I have to stop typing for now... The truth is, there are a ton of experimental features still in the code, just disabled. This is all just what I have kept, haha.***
+
+### Be sure to check '**Show more info**' (top of UI) for help
+- **Expandable help is also provided for some features**. 
+
+### Below is the original content before my branch:
+<hr />
+
 # Deforum Stable Diffusion — official extension for AUTOMATIC1111's webui
-# <b style='color:red;'>reallybigname's experimental version</b>
 
 <p align="left">
     <a href="https://github.com/deforum-art/sd-webui-deforum/commits"><img alt="Last Commit" src="https://img.shields.io/github/last-commit/deforum-art/deforum-for-automatic1111-webui"></a>
