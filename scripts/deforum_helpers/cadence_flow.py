@@ -31,8 +31,8 @@ def cadence_flow(turbo, flow_method, raft_model, updown_scale=1):
         turbo_next_image = turbo['next']
         
         # SHAPE flow setup - get flows from (prev_first to next_first) for prev | (prev_last to next_last) for next
-        shape_flow_prev = get_flow_from_images(turbo[r[0]]['prev'], turbo[r[0]]['next'], *flow_args, **flow_kwargs)
-        shape_flow_next = get_flow_from_images(turbo[r[1]]['prev'], turbo[r[1]]['next'], *flow_args, **flow_kwargs)
+        shape_flow_prev = get_flow_from_images(turbo[start_range]['prev'], turbo[start_range]['next'], *flow_args, **flow_kwargs)
+        shape_flow_next = get_flow_from_images(turbo[end_range-1]['prev'], turbo[end_range-1]['next'], *flow_args, **flow_kwargs)
         
         # MOVEMENT flow section - collect all flows from turbo_prev_image to all prevs and turbo_next_image to all nexts in temporary flows dict
         pbar = tqdm(total=rt)
@@ -84,13 +84,9 @@ def cadence_flow(turbo, flow_method, raft_model, updown_scale=1):
                 shape_prev = combine_flow_fields(weights, shapes_prev)
                 shape_next = combine_flow_fields(weights, shapes_next)
 
-                # MOVEMENT flow retrieval
-                move_prev = flows[idx][0]
-                move_next = flows[idx][1]
-
                 # SHAPE & MOVEMENT combined by remapping shape flow using movement flow
-                shape_and_move_prev = remap_flow(shape_prev, move_prev) * ff
-                shape_and_move_next = remap_flow(shape_next, move_next) * ff
+                shape_and_move_prev = remap_flow(shape_prev, flows[idx][0]) # * ff
+                shape_and_move_next = remap_flow(shape_next, flows[idx][1]) # * ff
 
                 img_prev = image_transform_optical_flow(turbo[idx]['prev'], shape_and_move_prev, ff)
                 img_next = image_transform_optical_flow(turbo[idx]['next'], shape_and_move_next, ff)

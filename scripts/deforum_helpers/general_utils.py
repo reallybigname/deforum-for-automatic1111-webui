@@ -2,7 +2,12 @@ import os
 import shutil
 import hashlib
 from modules.shared import opts
-from basicsr.utils.download_util import load_file_from_url
+
+try:
+    from modules.modelloader import load_file_from_url
+except:
+    print("Try to fallback to basicsr with older modules")
+    from basicsr.utils.download_util import load_file_from_url
 
 def debug_print(message, print_anyway=False):
     """ prints in debug mode, can print normally when not in debug mode with optional arg """

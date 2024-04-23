@@ -8,4 +8,4 @@ imageio_ffmpeg
 rich
 gdown
 color_matcher
-opencv-contrib-python
+

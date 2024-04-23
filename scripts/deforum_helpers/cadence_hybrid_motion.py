@@ -40,20 +40,27 @@ def cadence_hybrid_motion(turbo, inputfiles, inputframes_path, hybridframes_path
             prev = turbo[idx]['prev']
             next = turbo[rdx]['next']
 
+            # test for presence of start index in the last turbo dict
             if 'idx_start' in turbo['turbo_last']:
-                # establish index for images one cadence cycle ago and retrieve images
+                # establish last prev/next images using index from one cadence cycle ago
                 last_prev_img = np.copy(turbo['turbo_last'][idx-turbo_steps]['prev'])
                 last_next_img = np.copy(turbo['turbo_last'][rdx-turbo_steps]['next'])
             elif turbo['last_img'] is not None:
-                # if first cadence cycle, it must use the last_img (which is the frame 0 image)
+                # in first cadence cycle, it just uses the last_img (which is the frame 0 image)
                 last_prev_img = np.copy(turbo['last_img'])
                 last_next_img = np.copy(turbo['last_img'])
 
-            if anim_args.hybrid_motion == 'Matrix Flow':
-                matrix_flow = turbo['matrix_flow']
-                hybrid_motion_kwargs.update({'matrix_flow': matrix_flow})
+            # establishg duplicate for reverse kwargs, even if not using matrix flow
+            hybrid_motion_kwargs_r = hybrid_motion_kwargs.copy()
 
-            # prev section - catch up with current state by warping with the flow list so far
+            # if using matrix flow, get forward and reverse matrix flow lists for the hybrid motion kwargs and reverse kwargs
+            if anim_args.hybrid_motion == 'Matrix Flow':
+                matrix_flow_f = turbo[idx]['matrix_flow']
+                matrix_flow_r = turbo[rdx]['matrix_flow']
+                hybrid_motion_kwargs.update({'matrix_flow': matrix_flow_f})
+                hybrid_motion_kwargs_r.update({'matrix_flow': matrix_flow_r})
+
+            # catch up with current state by warping each using their flow list so far
             for prev_motion, next_motion in motions:
                 if anim_args.hybrid_motion in ['Perspective', 'Affine']:
                     prev = image_transform_ransac(prev, prev_motion, anim_args.hybrid_motion)
@@ -64,9 +71,10 @@ def cadence_hybrid_motion(turbo, inputfiles, inputframes_path, hybridframes_path
             
             # process hybrid motion on prev frame
             prev, prev_motion = hybrid_motion(idx, prev, last_prev_img, prev_motion, *hybrid_motion_args, float(turbo[idx]['ckey']['hybrid_flow_factor']), raft_model, **hybrid_motion_kwargs)
-            next, next_motion = hybrid_motion(rdx, next, last_next_img, next_motion, *hybrid_motion_args, float(turbo[rdx]['ckey']['hybrid_flow_factor']), raft_model, **hybrid_motion_kwargs, reverse=True)
+            next, next_motion = hybrid_motion(rdx, next, last_next_img, next_motion, *hybrid_motion_args, float(turbo[rdx]['ckey']['hybrid_flow_factor']), raft_model, **hybrid_motion_kwargs_r, reverse=True)
             motions.append((prev_motion, next_motion))
-                
+
+            # put values back in turbo dict
             turbo[idx]['prev'] = np.copy(prev)
             turbo[rdx]['next'] = np.copy(next)
 
