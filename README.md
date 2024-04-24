@@ -38,7 +38,14 @@
 ### Be sure to check '**Show more info**' (top of UI) for help
 - **Expandable help is also provided for some features**. 
 
-### Below is the original readme before my branch:
+## Simple install for ***Reforum*** in AUTOMATIC1111 using Load from URL tab:
+- URL   : **https://github.com/reallybigname/sd-webui-deforum.git**
+- Branch: **reforum**
+
+<hr />
+
+## Below is the original readme before my branch:
+
 <hr />
 
 # Deforum Stable Diffusion — official extension for AUTOMATIC1111's webui
