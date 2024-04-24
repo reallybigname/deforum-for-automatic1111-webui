@@ -1,6 +1,14 @@
 
 # Reforum - reallybigname deforum (experimental branch)
 
+## Simple install for ***Reforum*** in AUTOMATIC1111 
+- *Note  : Remove/Move any existing sd-webui-deforum extension folder* **(no duplicate installs)**
+- Under **Extensions** • **Load from URL**: 
+  - URL: **https://github.com/reallybigname/sd-webui-deforum.git**
+  - Branch: **reforum**
+
+## About Reforum
+
 #### I started this branch in like June of 2023 and it became very different over time. I just finally released it to the public and it's now April 2024. See, I used it as my experimental playground, and didn't limit myself as I would have with the main branch. I wanted to change some things fundamentally and experiment. There's a lot on the back end that are invisible, but I'll try to start documenting the major front-end changes and features here:
 
 - **Cadence**
@@ -37,10 +45,6 @@
 
 ### Be sure to check '**Show more info**' (top of UI) for help
 - **Expandable help is also provided for some features**. 
-
-## Simple install for ***Reforum*** in AUTOMATIC1111 using Load from URL tab:
-- URL   : **https://github.com/reallybigname/sd-webui-deforum.git**
-- Branch: **reforum**
 
 <hr />
 
