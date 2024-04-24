@@ -1,7 +1,7 @@
 
 # Reforum - reallybigname deforum (experimental branch)
 
-## Simple install for ***Reforum*** in AUTOMATIC1111 
+## Install ***Reforum*** branch in AUTOMATIC1111 
 - *Note  : Remove/Move any existing sd-webui-deforum extension folder* **(no duplicate installs)**
 - Under **Extensions** • **Load from URL**: 
   - URL: **https://github.com/reallybigname/sd-webui-deforum.git**
